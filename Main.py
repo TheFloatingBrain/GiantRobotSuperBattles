@@ -378,9 +378,6 @@ class Robot_Base:
                 self._kickBox = Bounding_Box()
                 self._kickBox.x_offset = 60
                 self._kickBox.y_offset = 40
-                self._timesHitInRow = 0
-                self._timesPunchedInRow = 0
-                self._isAttemptingPunch = False
                 #self._kickBox.
         def getAT( self ):
                 return self._ArmTime
@@ -454,20 +451,12 @@ class Robot_Base:
                 self._Bkwd = value
         def setJump( self, value ):
                 self._Jump = value
-        def setTimesHitInRow( self, value ):
-                self._timesHitInRow = value
-        def setTimesPunchedInRow( self, value ):
-                self._timesPunchedInRow = value
-        def setIsAttemptingPunch( self, value ):
-                self._isAttemptingPunch = value
         def getFwd( self ):
                 return self._Fwd
         def getBkwd( self ):
                 return self._Bkwd
         def getJump( self ):
                 return self._Jump
-        def getIsAttemptingPunch( self ):
-                return self._isAttemptingPunch
         def Draw( self ):
                 if self._Fwd == True:
                         if self._Jump == False:
@@ -512,10 +501,6 @@ class Robot_Base:
                 self._ArmColl = value
         def getACll( self ):
                 return self._ArmColl
-        def getTimesHitInRow( self ):
-                return self._timesHitInRow
-        def getTimesPunchedInRow( self ):
-                return self._timesPunchedInRow
         def Punch( self ):
                 pass
         def CheckPunch( self ):
@@ -541,8 +526,6 @@ class Robot_Base:
                                 self._ArmVect.setDestination( self._ArmPos.x - 10, self._ArmPos.y )
                                 self._ArmVect = Calc( self._ArmVect, self._ArmPos )
                                 self._ArmTime = 1
-                        self._isAttemptingPunch = True
-                        print( "Trying to punch!" )
         def CheckPunch( self ):
                 if self._ArmTime >= 1:
                         self._ArmTime += 1
@@ -557,8 +540,6 @@ class Robot_Base:
                         self._ArmVect.y = 0
                         self._ArmPos.x = self._Position.x + 10
                         self._ArmPos.y = self._Position.y + 30
-                        self._isAttemptingPunch = False
-                        print( "Not trying to punch!" )
         vector = property( getV, setV, "The vector." )
         position = property( getP, setP, "The position." )
         arm_position = property( getAP, setAP, "The arms position." )
@@ -576,9 +557,6 @@ class Robot_Base:
         arm_col = property( getACll, setACll, "Did we collide with a robots arm?" )
         health = property( getHealth, setHealth, "The robot's health." )
         arm_time = property( getAT, setAT, "To tell if the robot is punching" )
-        timesHitInRow = property( getTimesHitInRow, setTimesHitInRow, "To tell how many times a robot has punched another robot in a row." )
-        timesHitInRow = property( getTimesPunchedInRow, setTimesPunchedInRow, "To tell how many times a robot has been punched by another robot in a row." )
-        isAttemptingPunch = property( getIsAttemptingPunch, setIsAttemptingPunch, "To tell if the robot is actually trying to punch." )
 
 
 #################################
@@ -735,8 +713,6 @@ def KeepInLevel( Robot ):
                 while Robot.position.x < 40:
                         Robot.position = Move( Robot.vector, Robot.position )
                 Robot.vector = t
-                #if Robot.timesPunchedInRow > 5:
-                        #Robot.Jump()
         return Robot
 
 
@@ -745,12 +721,6 @@ def KeepInLevel( Robot ):
 def Hurt( Robot, OtherBot ):
         if Robot.arm_col == True and OtherBot.arm_time >= 1:
                 Robot.health = Robot.health - 1
-                if Robot.isAttemptingPunch == True:
-                        Robot.timesHitInRow += 1
-                        OtherBot.timesPunchedInRow += 1
-        elif Robot.isAttemptingPunch == True:
-                Robot.timesHitInRow = 0
-                OtherBot.timesPunchedInRow = 0
         return Robot
 
 #Manages all the collisions.
@@ -1060,7 +1030,7 @@ class Behavor:
                 if self._bbbCollided == True and self._pbbCollided == True:
                         self._bbbCollided = False
         def FowardAlt( self ):
-                        pass
+                pass
         def BackAlt( self ):
                 pass
         def FowardDecision( self ):
@@ -1275,9 +1245,6 @@ class AI_Controler:
         def UpdateParamiters( self, AI, targate ):
                 self._targate = targate
                 self._ai = AI
-        def IsStuck( self ):
-                if self._ai.timesPunchedInARow > 2 and self._ai.timesHitInARow <= 0:
-                        print( "IM STUCK!!" )
         def Refresh( self ):
                 ManageCollision( self._ai, self._targate )
                 self._ai = CM.Update_Physics( self._ai, self._targate )
