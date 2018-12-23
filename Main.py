@@ -954,8 +954,8 @@ class Behavor:
                 self._position = XY()
                 self._behavorDeterminBox = Bounding_Box()
                 self._punchBox = Bounding_Box()
-                self._foward = True
-                self._back = False
+                self._foward = False
+                self._back = True
                 self._otherFront = True
                 self._otherBack = False
                 self._otherFace = True
@@ -969,9 +969,7 @@ class Behavor:
         def UpdateParams( self, AI, Other ):
                 self._position = AI.position
                 self._foward = AI.foward
-                print( "Foward: ", AI.foward, " : ", self._foward )
                 self._back = AI.back
-                print( "Back: ", AI.back, " : ", self._back )
                 self._targate = Other
                 self._behavorDeterminBox.x_offset = 200
                 self._behavorDeterminBox.y_offset = 200
@@ -1061,17 +1059,17 @@ class Agressive( Behavor ):
                 t = Vector()
                 t.setBegin( self._position.x, self._position.y )
                 self._combat = False
-                #print( "Before: ", self._foward )
-                if self._otherFront == False:
-                        print( "Works" )
+                print( "Before: ", self._foward )
+                if self._otherFront == True:
+                        #print( "Works" )
                         t.setDestination( self._position.x + self._speed, self._position.y )
-                        #self._back = True
-                        #self._foward = False
+                        self._back = True
+                        self._foward = False
                 else:
                         t.setDestination( self._position.x - self._speed, self._position.y )
-                        #self._foward = True
-                        #self._back = False
-                #print( "After: ", self._back )
+                        self._back = False
+                        self._foward = True
+                print( "After: ", self._foward )
                 t = Calc( t, self._position )
                 self._vector.x = t.x
                 self._position = Move( self._vector, self._position )
