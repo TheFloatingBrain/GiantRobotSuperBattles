@@ -21,7 +21,10 @@ import os
 pygame.init()
 Window=pygame.display.set_mode((600,400),0,32)
 
-
+clock = pygame.time.Clock()
+MENU_TIME = 10
+MENU_SELECT_DELAY = 10
+GAME_FRAME_RATE = 240
 
 #################################
 #                               #
@@ -836,6 +839,7 @@ def getEvents():
 
 class GameThread:
         def __init__(self, KO, kop, back ):
+                self.threadClock = pygame.time.Clock()
                 self.bg = Sprite_Object( back )
                 self.ko = Sprite_Object( KO )
                 self.KOP = kop
@@ -843,6 +847,8 @@ class GameThread:
                 Window.blit( self.bg.sprite, (0, 0) )
                 getEvents()
         def MainGameThreadEnd( self ):
+                global GAME_FRAME_RATE
+                self.threadClock.tick( GAME_FRAME_RATE )
                 pygame.display.update()
         def getKO( self ):
                 return self.ko
@@ -1708,12 +1714,20 @@ class Menu:
 
 
 
+def PygameUpdate( time ):
+        global clock
+        clock.tick( time )
+        pygame.display.update()
+
 
 
 #############MAIN PROECDURE#############
 
 
 def main():
+        global clock
+        global MENU_TIME
+        global MENU_SELECT_DELAY
         os.system( "COLOR 9" )
         print( "Giant Robot Super Battles: \n\n \t Created by Christopher Greeley: \n\n\t Programed With:\n\n\t Python Version 3.22, and Pygame Version 1.92." )
         levels = [ GamePackage( "City", "KO.png" ), GamePackage( "Radioactive", "KO.png" ), GamePackage( "Moutain", "KO.png" ) ]
@@ -1765,11 +1779,12 @@ def main():
                                         gameType = i.Run()
                                         i.activate = False
                                         startScreen = False
+                                        clock.tick( MENU_SELECT_DELAY )
                                         break
                         if H == True:
                                 os.system( "ReadMe.txt" )
                                 os.system( "EXIT" )
-                        pygame.display.update()
+                        PygameUpdate( MENU_TIME )
                 while whichLevel == -1:
                         Window.blit( GuiBack.sprite, ( 0, 0 ) )
                         Window.blit( chooseStage.sprite, ( 200, 40 ) )
@@ -1779,9 +1794,10 @@ def main():
                         for i in levelMenu.buttons:
                                 if i.Run() != -1:
                                         whichLevel = i.Run()
+                                        clock.tick( MENU_SELECT_DELAY )
                                         i.activate = False
                                         break
-                        pygame.display.update()
+                        PygameUpdate( MENU_TIME )
                 while inGame == False and startScreen == False:
                         if gameType == 1:
                                 Window.blit( GuiBack.sprite, ( 0,0 ) )
@@ -1795,6 +1811,7 @@ def main():
                                                 if i.Run() != -1:
                                                         p1 = i.Run()
                                                         i.activate = False
+                                                        clock.tick( MENU_SELECT_DELAY )
                                                         break
                                 if p2 == -1 and p1 != -1:
                                         Window.blit( Sprite_Object( gt[1] ).sprite, ( 200, 20 ) )
@@ -1803,6 +1820,7 @@ def main():
                                                         p2 = i.Run()
                                                         i.activate = False
                                                         inGame= True
+                                                        clock.tick( MENU_SELECT_DELAY )
                                                         break
                         else:
                                 while p1 == -1:
@@ -1817,8 +1835,8 @@ def main():
                                                         i.activate = False
                                                         inGame = True
                                                         break
-                                        pygame.display.update()
-                        pygame.display.update()
+                                        PygameUpdate( MENU_TIME )
+                        PygameUpdate( MENU_TIME )
                 while inGame == True:
                         if gameType == 0:
                                 level = OnePlayerLevel( levels[whichLevel], Bots[p1].CreatePlayer1(), Bots[0].CreateAI(), True )
