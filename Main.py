@@ -1262,10 +1262,18 @@ def Wait():
 
 #More will be implemented.
 class GamePackage:
-        def __init__( self, baground_sprite_dir, ko_object ):
-                self._thread = GameThread( ko_object, XY(), baground_sprite_dir )
+        def __init__( self, levelDir, ko_object ):
+                self._thread = GameThread( ko_object, XY(), levelDir + "\Back.png" )
+                self._foreground = Sprite_Object( levelDir + "\Foreground.png" )
+                self._cloudDir = levelDir + "\Cloud.png"
                 self._thread.koP.x = 200
                 self._thread.koP.y = 400
+                self._clouds = self.InitClouds()
+        def InitClouds( self ):
+                t = Sprite_Object( self._cloudDir )
+                clouds = [t]
+                del clouds[0]
+                return clouds
         def getThread( self ):
                 return self._thread
         def BeginThread( self ):
@@ -1297,13 +1305,13 @@ class GamePackage:
 
 #Base class for a level, so its not so messy.
 class Level:
-        def __init__( self, Package, Obj1, Obj2, AI ):
+        def __init__( self, Package, Obj1, Obj2, AI):
                 self._player = Obj1
                 self._robot = Obj2
                 self._package = Package
                 self._exploader = Exploader( 100.1, 100.1 )
                 self._gameOver = False
-                self._end = False
+                self._end = False                
                 if AI == True:
                         self._controller = AI_Controler( Obj2, Obj1 )
                 self.Initilize()
@@ -1427,13 +1435,38 @@ class OnePlayerLevel( Level ):
 
 
 
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+#class ButtonActions:
+#        def __init__( self ):
+#                self._RunWhat = ""
+#        def RunTPL( self, back ):
+#                level = TwoPlayerLevel( back, "KO.png" )
+#                while level.Notify == False:
+#                        level.Logic()
+#        def RunOPL( self, back ):
+#                level
+#        def Run( self, what ):
+                
+
 #############MAIN PROECDURE#############
 
 
 def main():
         os.system( "COLOR 9" )
         print( "Giant Robot Super Battles: \n\n \t Created by Christopher Greeley: \n\n\t Programed With:\n\n\t Python Version 3.22, and Pygame Version 1.92." )
-        Game = GamePackage( "Back.png", "KO.png" )
+        Game = GamePackage( "City", "KO.png" )
         BlueBot = Robot_Factory( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
         RedBot = Robot_Factory( "Red Bot/Robot_StandF.png", "Red Bot/Robot_StandB.png", "Red Bot/Robot_ArmF.png", "Red Bot/Robot_ArmB.png", "Red Bot/Robot_JumpingF.png", "Red Bot/Robot_JumpingB.png" )
         YellowBot = Robot_Factory( "Yellow Bot/Robot_StandF.png", "Yellow Bot/Robot_StandB.png", "Yellow Bot/Robot_ArmF.png", "Yellow Bot/Robot_ArmB.png", "Yellow Bot/Robot_JumpingF.png", "Yellow Bot/Robot_JumpingB.png" )
