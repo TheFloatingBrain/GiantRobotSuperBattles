@@ -1030,10 +1030,12 @@ class Behavor:
                 pass
         def Notify( self, AI ):
                 AI.position = self._position
-                AI.foward = self._foward
-                AI.back = self._back
+                AI.setFwd( self._foward )
+                AI.setBkwd( self._back )
                 AI.vector = self._vector
-                AI = Combat( AI, self._combat )
+                print( "Self ", self._foward )
+                print( " AI ", AI.foward )
+                #AI = Combat( AI, self._combat )
                 return AI
 
 
@@ -1059,9 +1061,8 @@ class Agressive( Behavor ):
                 t = Vector()
                 t.setBegin( self._position.x, self._position.y )
                 self._combat = False
-                print( "Before: ", self._foward )
+                #print( "Before: ", self._foward )
                 if self._otherFront == True:
-                        #print( "Works" )
                         t.setDestination( self._position.x + self._speed, self._position.y )
                         self._back = True
                         self._foward = False
@@ -1069,7 +1070,7 @@ class Agressive( Behavor ):
                         t.setDestination( self._position.x - self._speed, self._position.y )
                         self._back = False
                         self._foward = True
-                print( "After: ", self._foward )
+                #print( "After: ", self._foward )
                 t = Calc( t, self._position )
                 self._vector.x = t.x
                 self._position = Move( self._vector, self._position )
@@ -1144,15 +1145,15 @@ class AI_Controler:
                 self._targate = targate
                 self._ai = AI
         def Refresh( self ):
-                ManageCollision( self._ai, self._targate )
-                self._ai = CM.Update_Physics( self._ai, self._targate )
-                self._ai.Draw()
-                self._ai.Update_Arms()
+                #ManageCollision( self._ai, self._targate )
+                #self._ai = CM.Update_Physics( self._ai, self._targate )
                 if self._ai.BehavorDecide() == "agress":
                         self._ag.UpdateParams( self._ai, self._targate )
                         self._ag.Decision()
                         self._ai = self._ag.Notify( self._ai )
                         self._ai = KeepInLevel( self._ai )
+                self._ai.Draw()
+                self._ai.Update_Arms()
                 return self._ai
 
 
@@ -1191,7 +1192,7 @@ def TwoPlayer( gameThread ):
         ex = Exploader( 100.1, 100.1 )
         explosionCoords = XY()
         Test = ArtificalIntelegence( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
-        Test.SetBotPosition( 300, 270 )
+        Test.SetBotPosition( 300, 273 )
         Test.ArmCalc()
         Test.box.x_offset = 8
         Test.box.y_offset = 20
