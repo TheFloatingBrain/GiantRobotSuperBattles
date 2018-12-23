@@ -369,6 +369,13 @@ class Robot_Base:
                 self._ArmTime = 0
                 self._ArmColl = False
                 self._Health = 100
+                self._kicked = False
+                self._kick = False
+                self._kickCount = 0
+                self._kickBox = Bounding_Box()
+                self._kickBox.x_offset = 60
+                self._kickBox.y_offset = 40
+                #self._kickBox.
         def getAT( self ):
                 return self._ArmTime
         def setAT( self, value ):
@@ -588,7 +595,7 @@ X = False
 RShift = False
 RControle = False
 R = False
-
+H = False
 
 #################################
 #                               #
@@ -738,6 +745,7 @@ def Refresh_Bot( Robot, OtherBot, Punch ):
 #Gets events
 def getEvents():
         for event in pygame.event.get():
+                global H
                 global W
                 global A
                 global S
@@ -745,6 +753,7 @@ def getEvents():
                 global Left
                 global Right
                 global Up
+                global R
                 global Down
                 global Z
                 global X
@@ -753,6 +762,8 @@ def getEvents():
                 if event.type == QUIT:
                         pygame.quit()
                 if event.type == KEYDOWN:
+                        if event.key == K_h:
+                                H = True
                         if event.key == K_r:
                                 R = True
                         if event.key == K_w:
@@ -780,6 +791,8 @@ def getEvents():
                         if event.key == K_RCTRL:
                                 RControle = True
                 if event.type == KEYUP:
+                        if event.key == K_h:
+                                H = False
                         if event.key == K_r:
                                 R = False
                         if event.key == K_w:
@@ -1369,6 +1382,13 @@ class GamePackage:
 #Base class for a level, so its not so messy.
 class Level:
         def __init__( self, Package, Obj1, Obj2, AI):
+                self._playerHealth = Sprite_Object( "Battary.png" )
+                self._robotHealth = Sprite_Object( "Battary.png" )
+                self._pHBars = [ Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ),
+                                 Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ),
+                                 Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ),
+                                 Sprite_Object( "Bar.png" ) ]
+                self._rHBars = self._pHBars
                 self._player = Obj1
                 self._robot = Obj2
                 self._package = Package
@@ -1396,10 +1416,27 @@ class Level:
                         self._gameOver = False
                         self._robot.health = 100
                         self._player.health = 100
+                        self._package.thread.koP.y = 400
                         self.Initilize()
                 if R == True:
                         self._end = True
-                        self.CleanUp()
+        def DrawHealth( self ):
+                inc = 0
+                i = 0
+                Window.blit( self._playerHealth.sprite, ( 0, 0 ) )
+                Window.blit( self._robotHealth.sprite, ( 500, 0 ) )
+                while inc < 101:
+                        if self._player.health > inc:
+                                Window.blit( self._pHBars[i].sprite, ( inc, 2 ) )
+                        inc += 10
+                        i += 1
+                inc = 0
+                i = 0
+                while inc < 101:
+                        if self._robot.health > inc:
+                                Window.blit( self._rHBars[i].sprite, ( 500 + inc, 2 ) )
+                        inc += 10
+                        i += 1
         def RunLevel( self ):
                 pass
         def Initilize( self ):
@@ -1420,8 +1457,12 @@ class Level:
                 elif self._package.foregroundPos.y > 330:
                         self._package.foregroundPos.y -= .25
         def Logic( self ):
-                getEvents()
+                if self._gameOver == True and self._package.thread.koP.y < 80:
+                        pass
+                else:
+                        getEvents()
                 self._package.BeginThread()
+                self.DrawHealth()
                 if self._gameOver == False:
                         self.RunLevel()
                 else:
@@ -1455,11 +1496,11 @@ class TwoPlayerLevel( Level ):
         def Initilize( self ):
                 self._player.SetBotPosition( 100, 270 )
                 self._player.ArmCalc()
-                self._player.box.x_offset = 32
+                self._player.box.x_offset = 8
                 self._player.box.y_offset = 30
                 self._robot.SetBotPosition( 200, 270 )
                 self._robot.ArmCalc()
-                self._robot.box.x_offset = 12
+                self._robot.box.x_offset = 8
                 self._robot.box.y_offset = 20
         def RunLevel( self ):
                 self._player = Refresh_Bot( self._player, self._robot, Z )
@@ -1489,7 +1530,7 @@ class OnePlayerLevel( Level ):
         def Initilize( self ):
                 self._player.SetBotPosition( 100, 270 )
                 self._player.ArmCalc()
-                self._player.box.x_offset = 32
+                self._player.box.x_offset = 8
                 self._player.box.y_offset = 30
                 self._robot.SetBotPosition( 200, 270 )
                 self._robot.ArmCalc()
@@ -1572,8 +1613,8 @@ class Button:
 
 class BotChoice( ButtonAction ):
         def __init__(self, bot):
-                self._bot = 0
-        def Impement( self ):
+                self._bot = bot
+        def Implement( self ):
                 return self._bot
 
 class GameType( ButtonAction ):
@@ -1675,7 +1716,9 @@ class Menu:
 def main():
         os.system( "COLOR 9" )
         print( "Giant Robot Super Battles: \n\n \t Created by Christopher Greeley: \n\n\t Programed With:\n\n\t Python Version 3.22, and Pygame Version 1.92." )
-        Game = GamePackage( "City", "KO.png" )
+        levels = [ GamePackage( "City", "KO.png" ), GamePackage( "Radioactive", "KO.png" ), GamePackage( "Moutain", "KO.png" ) ]
+        levelChoices = [ "CityC.png", "RadC.png", "MountC.png" ]
+        levelChoiceAlts = [ "AltC.png", "AltR.png", "AltM.png" ]
         BlueBot = Robot_Factory( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
         RedBot = Robot_Factory( "Red Bot/Robot_StandF.png", "Red Bot/Robot_StandB.png", "Red Bot/Robot_ArmF.png", "Red Bot/Robot_ArmB.png", "Red Bot/Robot_JumpingF.png", "Red Bot/Robot_JumpingB.png" )
         YellowBot = Robot_Factory( "Yellow Bot/Robot_StandF.png", "Yellow Bot/Robot_StandB.png", "Yellow Bot/Robot_ArmF.png", "Yellow Bot/Robot_ArmB.png", "Yellow Bot/Robot_JumpingF.png", "Yellow Bot/Robot_JumpingB.png" )
@@ -1683,7 +1726,7 @@ def main():
         Bots = [ BlueBot, RedBot, YellowBot, GreenBot ]
         choices = [ "Blue Bot Icon.png", "Red Bot Icon.png", "Green Bot Icon.png", "Yellow Bot Icon.png" ]
         alts = [ "Default.png", "Default.png", "Default.png", "Default.png" ]
-        menu = Menu( 4, choices, 130.0, 60.0, "Cursor.png", 64.0, alts )
+        menu = Menu( 4, choices, 300.0, 60.0, "Cursor.png", 64.0, alts )
         gt = [ "1Player.png", "2Player.png" ]
         gtalts = [ "1Palt.png", "2Palt.png" ]
         startMenu = Menu( 2, gt, 240, 230.0, "Cursor.png", 64.0, gtalts )
@@ -1691,9 +1734,16 @@ def main():
         startMenu.buttons[1].action = GameType( 1 )
         menu.buttons[0].action = BotChoice( 0 )
         menu.buttons[1].action = BotChoice( 1 )
-        menu.buttons[2].action = BotChoice( 2 )
-        menu.buttons[3].action = BotChoice( 3 )
+        menu.buttons[2].action = BotChoice( 3 )
+        menu.buttons[3].action = BotChoice( 2 )
+        levelMenu = Menu( 3, levelChoices, 300.0, 60.0, "Cursor.png", 80.0, levelChoiceAlts )
+        levelMenu.buttons[0].action = BotChoice( 0 )
+        levelMenu.buttons[1].action = BotChoice( 1 )
+        levelMenu.buttons[2].action = BotChoice( 2 )
         GuiBack = Sprite_Object( "GuiScreen.png" )
+        chooseBot = Sprite_Object( "Choose Your Robot.png" )
+        chooseStage = Sprite_Object( "Choose Stage.png" )
+        helpFile = Sprite_Object( "Press H For Help.png" )
         startScreen = True
         pickScreen1 = False
         pickScreen2 = False
@@ -1701,9 +1751,12 @@ def main():
         p1 = -1
         p2 = -1
         gameType = -1
+        whichLevel = -1
+        #pygame.display.set_caption( "Giant Robot Super Battles", NONE )
         while True:
                 while startScreen == True:
                         Window.blit( GuiBack.sprite, ( 0, 0 ) )
+                        Window.blit( helpFile.sprite, ( 60, 360 ) )
                         getEvents()
                         startMenu.Select()
                         startMenu.Draw()
@@ -1713,32 +1766,62 @@ def main():
                                         i.activate = False
                                         startScreen = False
                                         break
+                        if H == True:
+                                os.system( "ReadMe.txt" )
+                                os.system( "EXIT" )
+                        pygame.display.update()
+                while whichLevel == -1:
+                        Window.blit( GuiBack.sprite, ( 0, 0 ) )
+                        Window.blit( chooseStage.sprite, ( 200, 40 ) )
+                        getEvents()
+                        levelMenu.Select()
+                        levelMenu.Draw()
+                        for i in levelMenu.buttons:
+                                if i.Run() != -1:
+                                        whichLevel = i.Run()
+                                        i.activate = False
+                                        break
                         pygame.display.update()
                 while inGame == False and startScreen == False:
-                        if gameType == 0:
+                        if gameType == 1:
                                 Window.blit( GuiBack.sprite, ( 0,0 ) )
+                                Window.blit( chooseBot.sprite, ( 200,40 ) )
                                 getEvents()
                                 menu.Select()
                                 menu.Draw()
                                 if p1 == -1:
-                                        for i in startMenu.buttons:
-                                                print( i.Run() )
+                                        Window.blit( Sprite_Object( gt[0] ).sprite, ( 200, 20 ) )
+                                        for i in menu.buttons:
                                                 if i.Run() != -1:
                                                         p1 = i.Run()
-                                                        print( p1 )
                                                         i.activate = False
                                                         break
-                                if p2 == -1:
-                                        for i in startMenu.buttons:
+                                if p2 == -1 and p1 != -1:
+                                        Window.blit( Sprite_Object( gt[1] ).sprite, ( 200, 20 ) )
+                                        for i in menu.buttons:
                                                 if i.Run() != -1:
                                                         p2 = i.Run()
                                                         i.activate = False
+                                                        inGame= True
+                                                        break
+                        else:
+                                while p1 == -1:
+                                        Window.blit( GuiBack.sprite, ( 0,0 ) )
+                                        Window.blit( chooseBot.sprite, ( 200,40 ) )
+                                        getEvents()
+                                        menu.Select()
+                                        menu.Draw()
+                                        for i in menu.buttons:
+                                                if i.Run() != -1:
+                                                        p1 = i.Run()
+                                                        i.activate = False
                                                         inGame = True
-                                                        break        
+                                                        break
+                                        pygame.display.update()
                         pygame.display.update()
                 while inGame == True:
                         if gameType == 0:
-                                level = OnePlayerLevel( Game, Bots[p1].CreatePlayer1(), Bots[p2].CreatePlayer2(), False )
+                                level = OnePlayerLevel( levels[whichLevel], Bots[p1].CreatePlayer1(), Bots[0].CreateAI(), True )
                                 while level.Notify() == False:
                                         level.Logic()
                                 inGame = False
@@ -1746,16 +1829,15 @@ def main():
                                 p2 = -1
                                 startScreen = True
                                 gameType = -1
+                                whichLevel = -1
                         else:
-                                level = OnePlayerLevel( Game, Bots[p1].CreatePlayer1(), Bots[0].CreateAI(), True )
-                                while level.Notify == False:
+                                level = TwoPlayerLevel( levels[whichLevel], Bots[p1].CreatePlayer1(), Bots[p2].CreatePlayer2(), False )
+                                while level.Notify() == False:
                                         level.Logic()
                                 inGame = False
                                 p1 = -1
                                 startScreen = True
                                 gameType = -1
-        #level = OnePlayerLevel( Game, BlueBot.CreatePlayer1(), GreenBot.CreateAI(), True )
-        #while level.Notify() == False:
-        #        level.Logic()
-        
+                                whichLevel = -1        
+#####-----START THE MAIN PROCEDURE!-----#####
 main()
