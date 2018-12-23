@@ -359,7 +359,7 @@ class Robot_Base:
                 self._ArmBox = Bounding_Box()
                 self._ArmTime = 0
                 self._ArmColl = False
-                self._Health = 1#00000
+                self._Health = 100
         def getAT( self ):
                 return self._ArmTime
         def setAT( self, value ):
@@ -490,6 +490,33 @@ class Robot_Base:
                 return self._Health
         def setHealth( self, value ):
                 self._Health = value
+        def Punch( self ):
+                if self._ArmTime >= 1:
+                        pass
+                else:
+                        self._ArmVect.setBegin( self._ArmPos.x, self._ArmPos.y )
+                        if self._Fwd == True:
+                                self._ArmVect.setDestination( self._ArmPos.x + 10, self._ArmPos.y )
+                                self._ArmVect = Calc( self._ArmVect, self._ArmPos )
+                                self._ArmTime = 1
+                        else:
+                                self._ArmVect.setDestination( self._ArmPos.x - 10, self._ArmPos.y )
+                                self._ArmVect = Calc( self._ArmVect, self._ArmPos )
+                                self._ArmTime = 1
+        def CheckPunch( self ):
+                if self._ArmTime >= 1:
+                        self._ArmTime += 1
+                        self._ArmPos = Move( self._ArmVect, self._ArmPos )
+                        self._ArmBox.position.x = self._ArmPos.x
+                        self._ArmBox.position.y = self._ArmPos.y
+                        self._ArmBox.x_offset = 32
+                        self._ArmBox.y_offset = 16
+                if self._ArmTime > 20:
+                        self._ArmTime = 0
+                        self._ArmVect.x = 0
+                        self._ArmVect.y = 0
+                        self._ArmPos.x = self._Position.x + 10
+                        self._ArmPos.y = self._Position.y + 30
         vector = property( getV, setV, "The vector." )
         position = property( getP, setP, "The position." )
         arm_position = property( getAP, setAP, "The arms position." )
@@ -520,33 +547,8 @@ class Robot_Base:
 
 
 class PlayerBase( Robot_Base ):
-        def Punch( self ):
-                if self._ArmTime >= 1:
-                        pass
-                else:
-                        self._ArmVect.setBegin( self._ArmPos.x, self._ArmPos.y )
-                        if self._Fwd == True:
-                                self._ArmVect.setDestination( self._ArmPos.x + 10, self._ArmPos.y )
-                                self._ArmVect = Calc( self._ArmVect, self._ArmPos )
-                                self._ArmTime = 1
-                        else:
-                                self._ArmVect.setDestination( self._ArmPos.x - 10, self._ArmPos.y )
-                                self._ArmVect = Calc( self._ArmVect, self._ArmPos )
-                                self._ArmTime = 1
-        def CheckPunch( self ):
-                if self._ArmTime >= 1:
-                        self._ArmTime += 1
-                        self._ArmPos = Move( self._ArmVect, self._ArmPos )
-                        self._ArmBox.position.x = self._ArmPos.x
-                        self._ArmBox.position.y = self._ArmPos.y
-                        self._ArmBox.x_offset = 32
-                        self._ArmBox.y_offset = 16
-                if self._ArmTime > 20:
-                        self._ArmTime = 0
-                        self._ArmVect.x = 0
-                        self._ArmVect.y = 0
-                        self._ArmPos.x = self._Position.x + 10
-                        self._ArmPos.y = self._Position.y + 30
+        def Controle( self ):
+                pass
 
 
 #################################
@@ -677,23 +679,8 @@ def Combat( Robot, Punch ):#, Kick ):
 
 
 
-
-
-
-#Refreshes the players.
-def Refresh_Bot( Robot, OtherBot, Punch ):
-        Robot.Controle()
-        Robot.position = Move( Robot.vector, Robot.position )
-        Robot.Update_Arms()
-        Robot = Combat( Robot, Punch )
-        Robot.Draw()
-        Robot.collision = CM.Check_Collision( Robot.box, OtherBot.box )
-        Robot.arm_col = CM.Check_Collision( OtherBot.arm_box, Robot.box )
-        if Robot.arm_col == True and Robot.arm_time >= 1:
-                Robot.health = Robot.health - 1
-        Robot = CM.Update_Physics( Robot, OtherBot )
-        if Robot.jump == True:
-                Robot.Jump()
+#Makes sure the robot does not exit the level.
+def KeepInLevel( Robot ):
         if Robot.position.x > 600:
                 Robot.vector.x = -1
                 Robot.vector.y = 0
@@ -708,6 +695,35 @@ def Refresh_Bot( Robot, OtherBot, Punch ):
                 while Robot.position.x < 40:
                         Robot.position = Move( Robot.vector, Robot.position )
                 Robot.vector = t
+        return Robot
+
+
+
+#If the robot gets "punched" its health will be decromented."
+def Hurt( Robot ):
+        if Robot.arm_col == True and Robot.arm_time >= 1:
+                Robot.health = Robot.health - 1
+        return Robot
+
+#Manages all the collisions.
+def ManageCollision( Robot, OtherBot ):
+        Robot.collision = CM.Check_Collision( Robot.box, OtherBot.box )
+        Robot.arm_col = CM.Check_Collision( OtherBot.arm_box, Robot.box )
+        Robot = Hurt( Robot )
+        return Robot
+
+#Refreshes the players.
+def Refresh_Bot( Robot, OtherBot, Punch ):
+        Robot.Controle()
+        Robot.position = Move( Robot.vector, Robot.position )
+        Robot.Update_Arms()
+        Robot = Combat( Robot, Punch )
+        Robot.Draw()
+        Robot = ManageCollision( Robot, OtherBot )
+        Robot = CM.Update_Physics( Robot, OtherBot )
+        if Robot.jump == True:
+                Robot.Jump()
+        Robot = KeepInLevel( Robot )
         return Robot
 
 
@@ -878,6 +894,9 @@ class Exploader:
 #                               #
 #################################
 
+
+
+##############---Currently Unused---##############
 class Returner:
         def __init__( self ):
                 self._position = XY()
@@ -939,14 +958,29 @@ class Behavor:
                 self._back = False
                 self._otherFront = True
                 self._otherBack = False
-                self._otherFace == True
+                self._otherFace = True
                 self._bbbCollided = False
                 self._pbbCollided = False
                 self._vector = Vector()
-        def UpdateParams( self, AI ):
+                self._targate = Player1( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
+                self._otherJumping = False
+                self._speed = .01
+                self._combat = False
+        def UpdateParams( self, AI, Other ):
                 self._position = AI.position
                 self._foward = AI.foward
+                print( "Foward: ", AI.foward, " : ", self._foward )
                 self._back = AI.back
+                print( "Back: ", AI.back, " : ", self._back )
+                self._targate = Other
+                self._behavorDeterminBox.x_offset = 200
+                self._behavorDeterminBox.y_offset = 200
+                self._punchBox.x_offset = 10
+                self._punchBox.y_offset = 70
+                self._behavorDeterminBox.position.x = self._position.x
+                self._behavorDeterminBox.position.y = self._position.y
+                self._punchBox.position.x = self._position.x
+                self._punchBox.position.y = self._position.y
         def IsFacing( self, Other ):
                 if Other.foward == self._foward or Other.back == self._back:
                         self._otherFace = False
@@ -959,7 +993,11 @@ class Behavor:
                 else:
                         self._otherFront = True
                         self._otherBack = False
-        def Manage_Collision( boundingBox ):
+                #if Other.position.y < self._position.y:
+                #        self._otherJumping = True
+                #else:
+                #        self._otherJumping = False
+        def Manage_Collision( self, boundingBox ):
                 self._bbbCollided = CM.Check_Collision( self._behavorDeterminBox, boundingBox )
                 self._pbbCollided = CM.Check_Collision( self._punchBox, boundingBox )
                 if self._bbbCollided == True and self._pbbCollided == True:
@@ -972,12 +1010,33 @@ class Behavor:
                 pass
         def BackDecision( self ):
                 pass
-        def Decision( self ):
+        def Default( self ):
                 pass
+        def Decision( self ):
+                self.IsFacing( self._targate )
+                self.Which_Side( self._targate )
+                self.Manage_Collision( self._targate.box )
+                if self._bbbCollided == True:
+                        if self._otherFront == True:
+                                self.FowardDecision()
+                        else:
+                                self.BackDecision()
+                if self._pbbCollided == True:
+                        if self._otherFront == True:
+                                self.FowardAlt()
+                        else:
+                                self.BackAlt()
+                else:
+                        self.Default()
         def Refresh( self ):
                 pass
-        def Notify( self ):
-                return 
+        def Notify( self, AI ):
+                AI.position = self._position
+                AI.foward = self._foward
+                AI.back = self._back
+                AI.vector = self._vector
+                AI = Combat( AI, self._combat )
+                return AI
 
 
 
@@ -990,6 +1049,128 @@ class Behavor:
 #                               #
 #                               #
 #################################
+
+
+
+
+
+
+class Agressive( Behavor ):
+        def Default( self ):
+                #print( "Default" )
+                t = Vector()
+                t.setBegin( self._position.x, self._position.y )
+                self._combat = False
+                #print( "Before: ", self._foward )
+                if self._otherFront == False:
+                        print( "Works" )
+                        t.setDestination( self._position.x + self._speed, self._position.y )
+                        #self._back = True
+                        #self._foward = False
+                else:
+                        t.setDestination( self._position.x - self._speed, self._position.y )
+                        #self._foward = True
+                        #self._back = False
+                #print( "After: ", self._back )
+                t = Calc( t, self._position )
+                self._vector.x = t.x
+                self._position = Move( self._vector, self._position )
+        def FowardAlt( self ):
+                #print( "Foward Alt" )
+                self._vector.x = 0
+                self._vector.y = 0
+                self._back = True
+                self._foward = False
+                self._combat = True
+                #print( "Punch Foward" )
+        def BackAlt( self ):
+                #print( "Back Alt" )
+                self._vector.x = 0
+                self._vector.y = 0
+                self._back = False
+                self._foward = True
+                self._combat = True
+                #print( "Punch Back." )
+        def FowardDecision( self ):
+                #print( "Foward" )
+                self._vector.setBegin( self._position.x, self._position.y )
+                self._vector.setDestination( self._position.x + .05, self._position.y )
+                self._back = True
+                self._foward = False
+                self._combat = False
+                self._vector = Calc( self._vector, self._position )
+                self._position = Move( self._vector, self._position )
+        def BackDecision( self ):
+                #print( "Back" )
+                self._vector.setBegin( self._position.x, self._position.y )
+                self._vector.setDestination( self._position.x - .05, self._position.y )
+                self._back = False
+                self._foward = True
+                self._combat = False
+                self._vector = Calc( self._vector, self._position )
+                self._position = Move( self._vector, self._position )
+
+
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+
+
+
+
+class ArtificalIntelegence( Robot_Base ):
+        def BehavorDecide( self ):
+                #if self._Health < 50:
+                #        return "pass"
+                #else:
+                #        return "agress"
+                return "agress"
+
+class AI_Controler:
+        def __init__( self ):
+                self._ag = Agressive()
+                self._targate = Player1( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
+                self._ai = ArtificalIntelegence( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
+        def UpdateParamiters( self, AI, targate ):
+                self._targate = targate
+                self._ai = AI
+        def Refresh( self ):
+                ManageCollision( self._ai, self._targate )
+                self._ai = CM.Update_Physics( self._ai, self._targate )
+                self._ai.Draw()
+                self._ai.Update_Arms()
+                if self._ai.BehavorDecide() == "agress":
+                        self._ag.UpdateParams( self._ai, self._targate )
+                        self._ag.Decision()
+                        self._ai = self._ag.Notify( self._ai )
+                        self._ai = KeepInLevel( self._ai )
+                return self._ai
+
+
+
+
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
 
 
 
@@ -1011,10 +1192,25 @@ def TwoPlayer( gameThread ):
         gameThread.koP.y = 400
         ex = Exploader( 100.1, 100.1 )
         explosionCoords = XY()
+        Test = ArtificalIntelegence( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
+        Test.SetBotPosition( 300, 270 )
+        Test.ArmCalc()
+        Test.box.x_offset = 8
+        Test.box.y_offset = 20
+        tester = AI_Controler()
+        #A = Test.position.y
         while True:
                 gameThread.MainGameThreadBegin()
                 if GameOver == False:
+                        tester.UpdateParamiters( Test, player1 )
+                        Test = tester.Refresh()
+                        Test.Draw()
+                        Test.Update_Arms()
+                        #if A != Test.position.y:
+                        #        A = Test.position.y
+                        #        print( A )
                         player1 = Refresh_Bot( player1, player2, Z )
+                        player1 = Refresh_Bot( player1, Test, Z )
                         player2 = Refresh_Bot( player2, player1, RShift )
                         if player1.health < 0:
                                 GameOver = True
