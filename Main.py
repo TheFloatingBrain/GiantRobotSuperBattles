@@ -1020,7 +1020,7 @@ class Behavor:
                 else:
                         self._otherFront = True
                         self._otherBack = False
-                if Other.position.y < self._position.y:
+                if Other.position.y < self._position.y - 5:
                         self._otherJumping = True
                 else:
                         self._otherJumping = False
@@ -1146,6 +1146,81 @@ class Agressive( Behavor ):
                                 self._position.y += 3
 
 
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+
+
+class Passive( Behavor ):
+        def Default( self ):
+                t = Vector()
+                t.setBegin( self._position.x, self._position.y )
+                self._combat = True
+                #print( "DEFAULT" )
+                if self._otherFront == True:
+                        t.setDestination( self._position.x, self._position.y )
+                        self._back = False
+                        self._foward = True
+                        if self._otherJumping == True and self._position.y >= 270:
+                                t.setDestination( self._position.x - self._speed, self._position.y )
+                                self._back = True
+                                self._foward = False
+                        elif self._bbbCollided == False and self._pbbCollided == False:
+                                t.setDestination( self._position.x + self._speed, self._position.y )
+                else:
+                        t.setDestination( self._position.x, self._position.y )
+                        self._back = True
+                        self._foward = False
+                        if self._otherJumping == True and self._position.y >= 270:
+                                t.setDestination( self._position.x + self._speed, self._position.y )
+                                self._back = False
+                                self._foward = True
+                        elif self._bbbCollided == False and self._pbbCollided == False:
+                                t.setDestination( self._position.x - self._speed, self._position.y )
+                t = Calc( t, self._position )
+                self._vector.x = t.x
+                self._position = Move( self._vector, self._position )
+        def FowardAlt( self ):
+                self._vector.x = 0
+                self._vector.y = 0
+                self._back = False
+                self._foward = True
+                self._combat = True
+        def BackAlt( self ):
+                self._vector.x = 0
+                self._vector.y = 0
+                self._back = True
+                self._foward = False
+                self._combat = True
+        def FowardDecision( self ):
+                self._combat = True
+        def BackDecision( self ):
+                self._combat = True
+        def DefaultAll( self ):
+                #print( "self._otherJumping: " + str( self._otherJumping ) + ", self._bbbCollided: " + str( self._bbbCollided ) )
+                if self._otherJumping == True:# and self._pbbCollided == True:
+                        if self._jt >= 25:
+                                self._jump = True
+                        else:
+                                self._jt += 1
+                else:
+                        self._jt -= 1
+                        self._jump = False
+                        if self._position.y <= 270:
+                                self._position.y += 3
+
+
 #################################
 #                               #
 #                               #
@@ -1163,11 +1238,10 @@ class Agressive( Behavor ):
 
 class ArtificalIntelegence( Robot_Base ):
         def BehavorDecide( self ):
-                #if self._Health < 50:
-                #        return "pass"
-                #else:
-                #        return "agress"
-                return "agress"
+                if self._Health < 50:
+                        return "pass"
+                else:
+                        return "agress"
 
 
 
@@ -1239,20 +1313,31 @@ class Robot_Factory:
 
 class AI_Controler:
         def __init__( self, AI, targate ):
-                self._ag = Agressive()
                 self._targate = targate
                 self._ai = AI
+                self._current = "agress"
+                self._availibleBehaviors = [ "agress", Agressive(), "pass", Passive() ]
+                self._ag = self._availibleBehaviors[ 1 ]
         def UpdateParamiters( self, AI, targate ):
                 self._targate = targate
                 self._ai = AI
         def Refresh( self ):
                 ManageCollision( self._ai, self._targate )
                 self._ai = CM.Update_Physics( self._ai, self._targate )
-                if self._ai.BehavorDecide() == "agress":
-                        self._ag.UpdateParams( self._ai, self._targate )
-                        self._ag.Decision()
-                        self._ai = self._ag.Notify( self._ai )
-                        self._ai = KeepInLevel( self._ai )
+                dec = self._ai.BehavorDecide()
+                if dec != self._current:
+                        i = 0
+                        while i < len( self._availibleBehaviors ):
+                                if self._availibleBehaviors[ i ] == dec:
+                                        self._ag = self._availibleBehaviors[ i + 1 ]
+                                        self._current = self._availibleBehaviors[ i ]
+                                        break
+                                i += 2
+                self._ag.UpdateParams( self._ai, self._targate )
+                self._ag.Decision()
+                self._ai = self._ag.Notify( self._ai )
+                self._ai = KeepInLevel( self._ai )
+                #####################3
                 self._ai.Draw()
                 self._ai.Update_Arms()
                 return self._ai
