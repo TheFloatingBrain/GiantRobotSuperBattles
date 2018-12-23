@@ -728,8 +728,6 @@ def KeepInLevel( Robot ):
                 while Robot.position.x > 560:
                         Robot.position = Move( Robot.vector, Robot.position )
                 Robot.vector = t
-                if Robot.timesPunchedInRow > 5:
-                        Robot.Jump()
         if Robot.position.x < 0:
                 Robot.vector.x = 1
                 Robot.vector.y = 0
