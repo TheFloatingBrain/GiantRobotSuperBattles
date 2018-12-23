@@ -16,7 +16,7 @@ import os
 #################################
 
 
-
+pygame.mixer.pre_init(44100, -16, 1, 512)
 #Initilize pygame
 pygame.init()
 Window=pygame.display.set_mode((600,400),0,32)
@@ -25,6 +25,18 @@ clock = pygame.time.Clock()
 MENU_TIME = 10
 MENU_SELECT_DELAY = 10
 GAME_FRAME_RATE = 240
+
+hitSounds = [ pygame.mixer.Sound( "Sounds/Hit/MetalHit0.wav" ), pygame.mixer.Sound( "Sounds/Hit/MetalHit1.wav" ),
+              pygame.mixer.Sound( "Sounds/Hit/MetalHit2.wav" ), pygame.mixer.Sound( "Sounds/Hit/MetalHit3.wav" ) ]
+gushSound = pygame.mixer.Sound( "Sounds/Wind/Gush.wav" )
+landNoise = pygame.mixer.Sound( "Sounds/Jump/Land.wav" )
+jumpNoise = pygame.mixer.Sound( "Sounds/Jump/Jump.wav" )
+boom = pygame.mixer.Sound( "Sounds/Boom.wav" )
+hitPlayed = 0
+walkChannels = 3
+boxingBellSound = pygame.mixer.Sound( "Sounds/66951__benboncan__boxing-bell.wav" )
+KOSound = pygame.mixer.Sound( "Sounds/KO.wav" )
+
 
 #################################
 #                               #
@@ -93,6 +105,9 @@ class Sprite_Object:
 
 
 
+##############Global#############
+gushSpriteF = Sprite_Object( "GushF.png" )
+gushSpriteB = Sprite_Object( "GushB.png" )
 
 #################################
 #                               #
@@ -123,7 +138,7 @@ class Vector:
                 else:
                         self._y = 0
         def Pythag( self ):
-                self._Mag = self._x + self._x * self._y * self._y
+                self._Mag = self._x * self._x + self._y * self._y
                 if self._Mag < 0:
                         self._Mag *= -1
                 self._Mag = math.sqrt( self._Mag )
@@ -344,6 +359,7 @@ class Robot_Base:
         def __init__( self, F, B, AF, AB, JF, JB ):
                 self.Initilize( F, B, AF, AB, JF, JB )
         def Initilize( self, F, B, AF, AB, JF, JB ):
+                global walkChannels
                 self._ReactM = 2
                 self._Col = False
                 self.ColFR = 0
@@ -365,7 +381,7 @@ class Robot_Base:
                 self._ArmDis = XY()
                 self._JmpF = False
                 self.jc = 0
-                self._coltime = 4
+                self._coltime = 100
                 self._Stop = True
                 self._ReactM = 4
                 self._ArmBox = Bounding_Box()
@@ -378,6 +394,10 @@ class Robot_Base:
                 self._kickBox = Bounding_Box()
                 self._kickBox.x_offset = 60
                 self._kickBox.y_offset = 40
+                self._gushTime = 0
+                self.walkSound = pygame.mixer.Sound( "Sounds/Robo/Walk.wav" )
+                walkChannels += 1
+                self.walkChannel = walkChannels
                 #self._kickBox.
         def getAT( self ):
                 return self._ArmTime
@@ -416,6 +436,7 @@ class Robot_Base:
         def Walk( self ):
                 self._Position = Move( self._Vector, self._Position )
         def Walk( self, x, y ):
+                global walkSound
                 self._Vector.setBegin( self._Position.x, self._Position.y )
                 self._Vector.setDestination( x, y )
                 self._Vector.Calc()
@@ -458,25 +479,37 @@ class Robot_Base:
         def getJump( self ):
                 return self._Jump
         def Draw( self ):
+                global gushSpriteF
+                global gushSpriteB
                 if self._Fwd == True:
                         if self._Jump == False:
                                 Window.blit( self._Foward.sprite, (self._Position.x, self._Position.y) )
                         else:
                                 Window.blit( self._JumpF.sprite, (self._Position.x, self._Position.y) )
                         Window.blit( self._ArmF.sprite, (self._ArmPos.x, self._ArmPos.y ) )
+                        if self._gushTime > 0:
+                                Window.blit( gushSpriteF.sprite, (self._Position.x, self._Position.y) )
+                                self._gushTime -= 1
                 else:
                         if self._Jump == False:
                                 Window.blit( self._Back.sprite, (self._Position.x, self._Position.y) )
                         else:
                                 Window.blit( self._JumpB.sprite, (self._Position.x, self._Position.y) )
                         Window.blit( self._ArmB.sprite, (self._ArmPos.x, self._ArmPos.y ) )
+                        if self._gushTime > 0:
+                                Window.blit( gushSpriteB.sprite, (self._Position.x, self._Position.y) )
+                                self._gushTime -= 1
         def Update_Arms( self ):
                 self._ArmPos.x = self._Position.x
                 self._ArmPos.x -= self._ArmDis.x
                 self._ArmPos.y = self._Position.y
                 self._ArmPos.y -= self._ArmDis.y
         def Jump( self ):
+                global landNoise
+                global jumpNoise
                 if self._Jump == True:
+                        if self.jc == 1:
+                                pygame.mixer.Channel( 2 ).play( jumpNoise )
                         self.jc += 1
                         if self.jc >= 100:
                                 self._JF = True
@@ -485,6 +518,7 @@ class Robot_Base:
                                         self.jc = 0
                                         self._JF = False
                                         self._Jump = False
+                                        pygame.mixer.Channel( 2 ).play( landNoise )
                         else:
                                 self._Position.y -= 3
                 else:
@@ -501,6 +535,10 @@ class Robot_Base:
                 self._ArmColl = value
         def getACll( self ):
                 return self._ArmColl
+        def getGushTime( self ):
+                return self._gushTime
+        def setGushTime( self, value ):
+                self._gushTime = value
         def Punch( self ):
                 pass
         def CheckPunch( self ):
@@ -557,6 +595,7 @@ class Robot_Base:
         arm_col = property( getACll, setACll, "Did we collide with a robots arm?" )
         health = property( getHealth, setHealth, "The robot's health." )
         arm_time = property( getAT, setAT, "To tell if the robot is punching" )
+        gushTime = property( getGushTime, setGushTime, "The amount of time to display wind." )
 
 
 #################################
@@ -719,8 +758,19 @@ def KeepInLevel( Robot ):
 
 #If the robot gets "punched" its health will be decromented."
 def Hurt( Robot, OtherBot ):
+        global hitSounds
+        global hitPlayed
         if Robot.arm_col == True and OtherBot.arm_time >= 1:
                 Robot.health = Robot.health - 1
+                if hitPlayed < 16:
+                        pygame.mixer.Channel( 0 ).play( hitSounds[ random.randint( 0, 2 ) ] )
+                        hitPlayed += 1
+                else:
+                        pygame.mixer.Channel( 0 ).play( hitSounds[ 3 ] )
+                        hitPlayed = 0
+                if OtherBot.position.y < 250:
+                        pygame.mixer.Channel( 1 ).play( gushSound )
+                        Robot.gushTime = 20
         return Robot
 
 #Manages all the collisions.
@@ -730,10 +780,19 @@ def ManageCollision( Robot, OtherBot ):
         Robot = Hurt( Robot, OtherBot )
         return Robot
 
+def RobotWalkSound( robot ):
+        robot.vector.Pythag()
+        if robot.vector.mag > .4 and robot.position.y >= 270:
+                if pygame.mixer.Channel( robot.walkChannel ).get_busy() == False:
+                        pygame.mixer.Channel( robot.walkChannel ).play( robot.walkSound )
+        else:
+                pygame.mixer.Channel( robot.walkChannel ).stop()
+
 #Refreshes the players.
 def Refresh_Bot( Robot, OtherBot, Punch ):
         Robot.Controle()
         Robot.position = Move( Robot.vector, Robot.position )
+        RobotWalkSound( Robot )
         Robot.Update_Arms()
         Robot = Combat( Robot, Punch )
         Robot.Draw()
@@ -881,9 +940,12 @@ class Exploader:
                 self.Y = y
                 self.random = 0
                 self.size = 0
+                self.currentChannel = 1
+                self.currentExplosion = 0
         def Randomize_R( self ):
                 self.random = random.randint( 0, 100 )
         def Create( self ):
+                global boom
                 if self.random >= 10 and self.random <= 15:
                         if self.size >= 10:
                                 i = 9
@@ -898,6 +960,11 @@ class Exploader:
                         self.all_coords.append( XY() )
                         self.all_coords[self.size - 1].x = random.uniform( self.X, self.X + 32 )
                         self.all_coords[self.size - 1].y = random.uniform( self.Y, self.Y + 128 )
+                        if self.currentExplosion % 3 == 0:
+                                if self.currentChannel >= 8:
+                                        currentChannel = 1
+                                pygame.mixer.Channel( self.currentChannel ).play( boom )
+                        self.currentExplosion += 1
         def Refresh( self ):
                 self.Randomize_R()
                 self.Create()
@@ -965,7 +1032,7 @@ class Returner:
 
 #################################
 #                               #
-#                               #
+#                               #KeepInLevel
 #                               #
 #                               #
 #                               #
@@ -1172,7 +1239,7 @@ class Passive( Behavor ):
                         t.setDestination( self._position.x, self._position.y )
                         self._back = False
                         self._foward = True
-                        if self._otherJumping == True and self._position.y >= 270:
+                        if self._otherJumping == True and self._position.y >= 270 and ( self._position.x < 64 or self._position.x > 536 ) == False:
                                 t.setDestination( self._position.x - self._speed, self._position.y )
                                 self._back = True
                                 self._foward = False
@@ -1182,7 +1249,7 @@ class Passive( Behavor ):
                         t.setDestination( self._position.x, self._position.y )
                         self._back = True
                         self._foward = False
-                        if self._otherJumping == True and self._position.y >= 270:
+                        if self._otherJumping == True and self._position.y >= 270 and ( self._position.x < 64 or self._position.x > 536 ) == False:
                                 t.setDestination( self._position.x + self._speed, self._position.y )
                                 self._back = False
                                 self._foward = True
@@ -1337,9 +1404,10 @@ class AI_Controler:
                 self._ag.Decision()
                 self._ai = self._ag.Notify( self._ai )
                 self._ai = KeepInLevel( self._ai )
-                #####################3
+                #####################
                 self._ai.Draw()
                 self._ai.Update_Arms()
+                RobotWalkSound( self._ai )
                 return self._ai
 
         
@@ -1485,13 +1553,15 @@ class Level:
                 self._package = Package
                 self._exploader = Exploader( 100.1, 100.1 )
                 self._gameOver = False
-                self._end = False                
+                self._end = False
+                self.sound = 0
                 if AI == True:
                         self._controller = AI_Controler( Obj2, Obj1 )
                 self.Initilize()
         def Draw( self ):
                 pass
         def EndGame( self ):
+                global walkChannels
                 self._player.Draw()
                 self._robot.Draw()
                 if self._player.health <= 0:
@@ -1507,10 +1577,12 @@ class Level:
                         self._gameOver = False
                         self._robot.health = 100
                         self._player.health = 100
+                        self.sound = 0
                         self._package.thread.koP.y = 400
                         self.Initilize()
                 if R == True:
                         self._end = True
+                        walkChannels = 3
         def DrawHealth( self ):
                 inc = 0
                 i = 0
@@ -1531,7 +1603,7 @@ class Level:
         def RunLevel( self ):
                 pass
         def Initilize( self ):
-                pass
+                self.sound = 0
         def CleanUp( self ):
                 del self._player
                 del self._robot
@@ -1548,6 +1620,8 @@ class Level:
                 elif self._package.foregroundPos.y > 330:
                         self._package.foregroundPos.y -= .25
         def Logic( self ):
+                global boxingBellSound
+                global KOSound
                 if self._gameOver == True and self._package.thread.koP.y < 80:
                         pass
                 else:
@@ -1557,6 +1631,13 @@ class Level:
                 if self._gameOver == False:
                         self.RunLevel()
                 else:
+                        if pygame.mixer.Channel( 0 ).get_busy() == False:
+                                if self.sound == 0:
+                                        pygame.mixer.Channel( 0 ).play( boxingBellSound, loops = 0, maxtime = 1700 )
+                                        self.sound += 1
+                                elif self.sound == 1:
+                                        pygame.mixer.Channel( 0 ).play( KOSound, loops = 0 )
+                                        self.sound += 1
                         self.EndGame()
                 self.Draw()
                 self.ForegroundUpdate()
@@ -1851,7 +1932,7 @@ def main():
         p2 = -1
         gameType = -1
         whichLevel = -1
-        #pygame.display.set_caption( "Giant Robot Super Battles", NONE )
+        pygame.display.set_caption( "Giant Robot Super Battles" )
         while True:
                 while startScreen == True:
                         Window.blit( GuiBack.sprite, ( 0, 0 ) )
