@@ -1269,21 +1269,84 @@ class GamePackage:
                 self._thread.koP.x = 200
                 self._thread.koP.y = 400
                 self._clouds = self.InitClouds()
+                self._frontClouds = self.InitClouds()
+                self._cloudVects = self.InitVectors()
+                self._fowardCloudVects = self.InitVectors()
+                self._foregroundPos = XY()
+                self._foregroundPos.x = -25
+                self._foregroundPos.y = 330
+                self._cloudPoses = self.InitVectors()
+                self._fowardCloudPoses = self.InitVectors()
         def InitClouds( self ):
                 t = Sprite_Object( self._cloudDir )
-                clouds = [t]
+                clouds = [ t ]
                 del clouds[0]
                 return clouds
+        def InitVectors( self ):
+                t = XY()
+                vects = [ t ]
+                del vects[0]
+                return vects
+        def RandomCloudGenirator( self ):
+                R = random.randrange( 0, 5000 )
+                if R >= 200 and R < 201:
+                        t = Sprite_Object( self._cloudDir )
+                        self._clouds.append( t )
+                        t2 = XY()
+                        t2.x = 0
+                        t2.y = random.randrange( 30.0, 160.0 )
+                        t3 = Vector()
+                        t3.setBegin( 0, t2.y )
+                        t3.setDestination( -.003, t2.y )
+                        t3.y = t2.y
+                        t3 = Calc( t3, t2 )
+                        self._cloudVects.append( t3 )
+                        self._cloudPoses.append( t2 )
+                if R >= 100 and R < 101:
+                        t = Sprite_Object( self._cloudDir )
+                        self._frontClouds.append( t )
+                        t2 = XY()
+                        t2.x = 0
+                        t2.y = random.randrange( 0.0, 150.0 )
+                        t3 = Vector()
+                        t3.setBegin( 0, t2.y )
+                        t3.setDestination( -.003, t2.y )
+                        t3.y = t2.y
+                        t3 = Calc( t3, t2 )
+                        self._fowardCloudVects.append( t3 )
+                        self._fowardCloudPoses.append( t2 )
         def getThread( self ):
                 return self._thread
         def BeginThread( self ):
                 self._thread.MainGameThreadBegin()
+                iret = 0
+                for i in self._frontClouds:
+                        self._fowardCloudPoses[iret] = Move( self._fowardCloudVects[iret], self._fowardCloudPoses[iret] )
+                        Window.blit( i.sprite, ( self._fowardCloudPoses[iret].x, self._fowardCloudPoses[iret].y ) )
+                        iret += 1
         def EndThread( self ):
+                self.RandomCloudGenirator()
+                iret = 0
+                for i in self._clouds:
+                        self._cloudPoses[iret] = Move( self._cloudVects[iret], self._cloudPoses[iret] )
+                        Window.blit( i.sprite, ( self._cloudPoses[iret].x, self._cloudPoses[iret].y ) )
+                        iret += 1
+                Window.blit( self._foreground.sprite, ( self._foregroundPos.x, self._foregroundPos.y ) )
                 self._thread.MainGameThreadEnd()
         def setKOposition( self ):
                 if self._thread.koP.y > 80:
                         self._thread.koP.y -= 1
+        def GetForground( self ):
+                return self,_foreground
+        def SetForeground( self, value ):
+                self._forground = value
+        def GetForegroundPosition( self ):
+                return self._foregroundPos
+        def SetForegroundPosition( self, value ):
+                self._foregroundPos = value
         thread = property( getThread, "Main game thread." )
+        foreground = property( GetForground, SetForeground, "Foreground makes it look good." )
+        foregroundPos = property( GetForegroundPosition, SetForegroundPosition, "The position of the foreground." )
 
 
 
@@ -1347,6 +1410,15 @@ class Level:
                 del self._package
                 del self._gameOver
                 del self._exploader
+        def ForegroundUpdate( self ):
+                if self._player.position.x < 300 and self._package.foregroundPos.x > -56:
+                        self._package.foregroundPos.x -= .25
+                if self._player.position.x > 300 and self._package.foregroundPos.x < 3:
+                        self._package.foregroundPos.x += .25
+                if self._player.position.y < 270 and self._package.foregroundPos.y < 350:
+                        self._package.foregroundPos.y += .25
+                elif self._package.foregroundPos.y > 330:
+                        self._package.foregroundPos.y -= .25
         def Logic( self ):
                 getEvents()
                 self._package.BeginThread()
@@ -1355,6 +1427,7 @@ class Level:
                 else:
                         self.EndGame()
                 self.Draw()
+                self.ForegroundUpdate()
                 self._package.EndThread()
         def getKO( self ):
                 return self._package.kO
@@ -1445,20 +1518,156 @@ class OnePlayerLevel( Level ):
 #                               #
 #################################
 
+class ButtonAction:
+        def __init__( self ):
+                self.Initilize()
+        def Implement( self ):
+                pass
+        def Initilize( self ):
+                pass
+
+
+class Button:
+        def __init__( self, Highlighted, NotSelected, x, y ):
+                self._selected = False
+                self._activate = False
+                self._highlighted = Sprite_Object( Highlighted )
+                self._notSelected = Sprite_Object( NotSelected )
+                self._position = XY()
+                self._position.x = x
+                self._position.y = y
+                self._action = ButtonAction()
+                self._action.Initilize()
+        def Animate( self ):
+                if self._seleced == True:
+                        Window.blit( self._highlighted.sprite, ( self._position.x, self._position.y ) )
+                else:
+                        Window.blit( self._notSelected.sprite, ( self._position.x, self._position.y ) )
+        def Run( self ):
+                if self._activate == True:
+                        return self._action.Implement()
+                else:
+                        return -1
+        def GetSelected( self ):
+                return self._selected
+        def SetSelected( self, value ):
+                self._selected = value
+        def GetActivate( self ):
+                return self._activate
+        def SetActivate( self, value ):
+                self._activate = value
+        def sprite( self ):
+                if self._selected == True:
+                        return self._highlighted
+                else:
+                        return self._notSelected
+        def GetAction( self ):
+                return self._action
+        def SetAction( self, value ):
+                self._action = value
+        selected = property( GetSelected, SetSelected, "Is the cursor hovering over this option?" )
+        activate = property( GetActivate, SetActivate, "Did we press the button?" )
+        action = property( GetAction, SetAction )
+
+
+class BotChoice( ButtonAction ):
+        def __init__(self, bot):
+                self._bot = 0
+        def Impement( self ):
+                return self._bot
+
+class GameType( ButtonAction ):
+        def __init__( self, value ):
+                self._gt = value
+        def Implement( self ):
+                return self._gt
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
 
 
 
-#class ButtonActions:
-#        def __init__( self ):
-#                self._RunWhat = ""
-#        def RunTPL( self, back ):
-#                level = TwoPlayerLevel( back, "KO.png" )
-#                while level.Notify == False:
-#                        level.Logic()
-#        def RunOPL( self, back ):
-#                level
-#        def Run( self, what ):
-                
+
+
+class Menu:
+        def __init__( self, numberOfButtons, Button_Images, x, startingY, Cursor, increment, ButtonAlts ):
+                self._middle = len(Button_Images) / 2
+                self._buttons = self.InitButtons()
+                self._currentButton = numberOfButtons - 1
+                self._cursor = Sprite_Object( Cursor )
+                self._cursorPosition = XY()
+                self._cursorPosition.x = x - 64
+                self._cursorPosition.y = startingY - 64
+                self._buttonOffset = increment
+                self._startY = startingY
+                self._x = x
+                self._lastY = 0.0
+                self._lastPosition = self._cursorPosition.y
+                i = 0
+                self._itemCoords = self.InitCoords()
+                while i < numberOfButtons:
+                        self._buttons.append( Button( Button_Images[i], ButtonAlts[i], x, startingY ) )
+                        temp = XY()
+                        temp.x = self._x
+                        temp.y = startingY
+                        self._itemCoords.append( temp )
+                        startingY += increment
+                        i += 1
+                self._lastY = startingY - increment
+        def InitButtons( self ):
+                t = Button( "Default.jpg", "Default.jpg", 0, 0 )
+                temp = [ t ]
+                del temp[0]
+                return temp
+        def InitCoords( self ):
+                t = XY()
+                temp = [ t ]
+                del temp[0]
+                return temp
+        def GetButtons( self ):
+                return self._buttons
+        def SetButtons( self, value ):
+                self._buttons = value
+        def Select( self ):
+                t = 0
+                self._buttons[self._currentButton].selected = False
+                if Down == True:
+                        self._currentButton -= 1
+                        if self._currentButton < 0:
+                                self._currentButton = len(self._buttons) - 1
+                if Up == True:
+                        self._currentButton += 1
+                        if self._currentButton > len(self._buttons ) - 1:
+                                self._currentButton = 0
+                self._cursorPosition.y = self._itemCoords[self._currentButton].y + 64
+                if Right == True:
+                        self._buttons[self._currentButton].activate = True
+                while t < 50:
+                        Wait()
+                        t += 1
+                self._buttons[self._currentButton].selected = True
+        def Draw( self ):
+                temp = self._startY
+                for i in self._buttons:
+                        temp += self._buttonOffset
+                        t = i.sprite()
+                        Window.blit( t.sprite, ( self._x, temp ) )
+                Window.blit( self._cursor.sprite, ( self._cursorPosition.x, self._cursorPosition.y ) )
+        def GetButtons( self ):
+                return self._buttons
+        def SetButtons( self, value ):
+                self._buttons = value
+        buttons = property( GetButtons, SetButtons )
+
+
+
+
 
 #############MAIN PROECDURE#############
 
@@ -1471,8 +1680,82 @@ def main():
         RedBot = Robot_Factory( "Red Bot/Robot_StandF.png", "Red Bot/Robot_StandB.png", "Red Bot/Robot_ArmF.png", "Red Bot/Robot_ArmB.png", "Red Bot/Robot_JumpingF.png", "Red Bot/Robot_JumpingB.png" )
         YellowBot = Robot_Factory( "Yellow Bot/Robot_StandF.png", "Yellow Bot/Robot_StandB.png", "Yellow Bot/Robot_ArmF.png", "Yellow Bot/Robot_ArmB.png", "Yellow Bot/Robot_JumpingF.png", "Yellow Bot/Robot_JumpingB.png" )
         GreenBot = Robot_Factory( "Green Bot/Robot_StandF.png", "Green Bot/Robot_StandB.png", "Green Bot/Robot_ArmF.png", "Green Bot/Robot_ArmB.png", "Green Bot/Robot_JumpingF.png", "Green Bot/Robot_JumpingB.png" )
-        level = OnePlayerLevel( Game, BlueBot.CreatePlayer1(), GreenBot.CreateAI(), True )
-        while level.Notify() == False:
-                level.Logic()
+        Bots = [ BlueBot, RedBot, YellowBot, GreenBot ]
+        choices = [ "Blue Bot Icon.png", "Red Bot Icon.png", "Green Bot Icon.png", "Yellow Bot Icon.png" ]
+        alts = [ "Default.png", "Default.png", "Default.png", "Default.png" ]
+        menu = Menu( 4, choices, 130.0, 60.0, "Cursor.png", 64.0, alts )
+        gt = [ "1Player.png", "2Player.png" ]
+        gtalts = [ "1Palt.png", "2Palt.png" ]
+        startMenu = Menu( 2, gt, 240, 230.0, "Cursor.png", 64.0, gtalts )
+        startMenu.buttons[0].action = GameType( 0 )
+        startMenu.buttons[1].action = GameType( 1 )
+        menu.buttons[0].action = BotChoice( 0 )
+        menu.buttons[1].action = BotChoice( 1 )
+        menu.buttons[2].action = BotChoice( 2 )
+        menu.buttons[3].action = BotChoice( 3 )
+        GuiBack = Sprite_Object( "GuiScreen.png" )
+        startScreen = True
+        pickScreen1 = False
+        pickScreen2 = False
+        inGame = False
+        p1 = -1
+        p2 = -1
+        gameType = -1
+        while True:
+                while startScreen == True:
+                        Window.blit( GuiBack.sprite, ( 0, 0 ) )
+                        getEvents()
+                        startMenu.Select()
+                        startMenu.Draw()
+                        for i in startMenu.buttons:
+                                if i.Run() != -1:
+                                        gameType = i.Run()
+                                        i.activate = False
+                                        startScreen = False
+                                        break
+                        pygame.display.update()
+                while inGame == False and startScreen == False:
+                        if gameType == 0:
+                                Window.blit( GuiBack.sprite, ( 0,0 ) )
+                                getEvents()
+                                menu.Select()
+                                menu.Draw()
+                                if p1 == -1:
+                                        for i in startMenu.buttons:
+                                                print( i.Run() )
+                                                if i.Run() != -1:
+                                                        p1 = i.Run()
+                                                        print( p1 )
+                                                        i.activate = False
+                                                        break
+                                if p2 == -1:
+                                        for i in startMenu.buttons:
+                                                if i.Run() != -1:
+                                                        p2 = i.Run()
+                                                        i.activate = False
+                                                        inGame = True
+                                                        break        
+                        pygame.display.update()
+                while inGame == True:
+                        if gameType == 0:
+                                level = OnePlayerLevel( Game, Bots[p1].CreatePlayer1(), Bots[p2].CreatePlayer2(), False )
+                                while level.Notify() == False:
+                                        level.Logic()
+                                inGame = False
+                                p1 = -1
+                                p2 = -1
+                                startScreen = True
+                                gameType = -1
+                        else:
+                                level = OnePlayerLevel( Game, Bots[p1].CreatePlayer1(), Bots[0].CreateAI(), True )
+                                while level.Notify == False:
+                                        level.Logic()
+                                inGame = False
+                                p1 = -1
+                                startScreen = True
+                                gameType = -1
+        #level = OnePlayerLevel( Game, BlueBot.CreatePlayer1(), GreenBot.CreateAI(), True )
+        #while level.Notify() == False:
+        #        level.Logic()
         
 main()
