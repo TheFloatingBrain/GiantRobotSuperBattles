@@ -338,7 +338,9 @@ CM = Collision_Manager()
 
 #AI and player base class.
 class Robot_Base:
-        def __init__(self, F, B, AF, AB, JF, JB ):
+        def __init__( self, F, B, AF, AB, JF, JB ):
+                self.Initilize( F, B, AF, AB, JF, JB )
+        def Initilize( self, F, B, AF, AB, JF, JB ):
                 self._ReactM = 2
                 self._Col = False
                 self.ColFR = 0
@@ -588,7 +590,6 @@ RControle = False
 R = False
 
 
-
 #################################
 #                               #
 #                               #
@@ -707,8 +708,8 @@ def KeepInLevel( Robot ):
 
 
 #If the robot gets "punched" its health will be decromented."
-def Hurt( Robot ):
-        if Robot.arm_col == True and Robot.arm_time >= 1:
+def Hurt( Robot, OtherBot ):
+        if Robot.arm_col == True and OtherBot.arm_time >= 1:
                 Robot.health = Robot.health - 1
         return Robot
 
@@ -716,7 +717,7 @@ def Hurt( Robot ):
 def ManageCollision( Robot, OtherBot ):
         Robot.collision = CM.Check_Collision( Robot.box, OtherBot.box )
         Robot.arm_col = CM.Check_Collision( OtherBot.arm_box, Robot.box )
-        Robot = Hurt( Robot )
+        Robot = Hurt( Robot, OtherBot )
         return Robot
 
 #Refreshes the players.
@@ -973,6 +974,8 @@ class Behavor:
                 self._otherJumping = False
                 self._speed = .01
                 self._combat = False
+                self._jump = False
+                self._jt = 0
         def UpdateParams( self, AI, Other ):
                 self._position = AI.position
                 self._foward = AI.foward
@@ -998,10 +1001,10 @@ class Behavor:
                 else:
                         self._otherFront = True
                         self._otherBack = False
-                #if Other.position.y < self._position.y:
-                #        self._otherJumping = True
-                #else:
-                #        self._otherJumping = False
+                if Other.position.y < self._position.y:
+                        self._otherJumping = True
+                else:
+                        self._otherJumping = False
         def Manage_Collision( self, boundingBox ):
                 self._bbbCollided = CM.Check_Collision( self._behavorDeterminBox, boundingBox )
                 self._pbbCollided = CM.Check_Collision( self._punchBox, boundingBox )
@@ -1035,13 +1038,18 @@ class Behavor:
                                 self.BackAlt()
                 else:
                         self.Default()
+                self.DefaultAll()
         def Refresh( self ):
+                pass
+        def DefaultAll( self ):
                 pass
         def Notify( self, AI ):
                 AI.position = self._position
                 AI.SetFowardRaw( self._foward )
                 AI.SetBackwardRaw( self._back )
                 AI.vector = self._vector
+                AI.jump = self._jump
+                AI.Jump()
                 AI = Combat( AI, self._combat )
                 return AI
 
@@ -1106,9 +1114,17 @@ class Agressive( Behavor ):
                 self._combat = False
                 self._vector = Calc( self._vector, self._position )
                 self._position = Move( self._vector, self._position )
-
-
-
+        def DefaultAll( self ):
+                if self._otherJumping == True:
+                        if self._jt >= 25:
+                                self._jump = True
+                        else:
+                                self._jt += 1
+                else:
+                        self._jt -= 1
+                        self._jump = False
+                        if self._position.y <= 270:
+                                self._position.y += 3
 
 
 #################################
@@ -1203,10 +1219,10 @@ class Robot_Factory:
 
 
 class AI_Controler:
-        def __init__( self, RobotFactory ):
+        def __init__( self, AI, targate ):
                 self._ag = Agressive()
-                self._targate = RobotFactory.CreatePlayer1()
-                self._ai = RobotFactory.CreateAI()
+                self._targate = targate
+                self._ai = AI
         def UpdateParamiters( self, AI, targate ):
                 self._targate = targate
                 self._ai = AI
@@ -1227,7 +1243,10 @@ class AI_Controler:
 
 
 
-
+def Wait():
+        w = 0
+        while w < 10000:
+                w += 1
 
 #################################
 #                               #
@@ -1245,6 +1264,8 @@ class AI_Controler:
 class GamePackage:
         def __init__( self, baground_sprite_dir, ko_object ):
                 self._thread = GameThread( ko_object, XY(), baground_sprite_dir )
+                self._thread.koP.x = 200
+                self._thread.koP.y = 400
         def getThread( self ):
                 return self._thread
         def BeginThread( self ):
@@ -1276,30 +1297,57 @@ class GamePackage:
 
 #Base class for a level, so its not so messy.
 class Level:
-        def __init__( self, Package, Obj1, Obj2 ):
+        def __init__( self, Package, Obj1, Obj2, AI ):
                 self._player = Obj1
                 self._robot = Obj2
                 self._package = Package
                 self._exploader = Exploader( 100.1, 100.1 )
                 self._gameOver = False
                 self._end = False
+                if AI == True:
+                        self._controller = AI_Controler( Obj2, Obj1 )
                 self.Initilize()
         def Draw( self ):
                 pass
         def EndGame( self ):
-                pass
+                self._player.Draw()
+                self._robot.Draw()
+                if self._player.health <= 0:
+                        self._exploader.setX( self._player.position.x )
+                        self._exploader.setY( self._player.position.y )
+                if self._robot.health <= 0:
+                        self._exploader.setX( self._robot.position.x )
+                        self._exploader.setY( self._robot.position.y )
+                self._exploader.Refresh()
+                self._package.setKOposition()
+                Window.blit( self._package.thread.kO.sprite, (self._package.thread.koP.x, self._package.thread.koP.y) )
+                if W == True:
+                        self._gameOver = False
+                        self._robot.health = 100
+                        self._player.health = 100
+                        self.Initilize()
+                if R == True:
+                        self._end = True
+                        self.CleanUp()
         def RunLevel( self ):
                 pass
         def Initilize( self ):
                 pass
         def CleanUp( self ):
-                pass
+                del self._player
+                del self._robot
+                del self._package
+                del self._gameOver
+                del self._exploader
         def Logic( self ):
+                getEvents()
+                self._package.BeginThread()
                 if self._gameOver == False:
                         self.RunLevel()
                 else:
                         self.EndGame()
                 self.Draw()
+                self._package.EndThread()
         def getKO( self ):
                 return self._package.kO
         def Notify( self ):
@@ -1333,43 +1381,14 @@ class TwoPlayerLevel( Level ):
                 self._robot.box.x_offset = 12
                 self._robot.box.y_offset = 20
         def RunLevel( self ):
-                self._package.BeginThread()
                 self._player = Refresh_Bot( self._player, self._robot, Z )
                 self._robot = Refresh_Bot( self._robot, self._player, RShift )
                 self._player.Update_Arms()
                 self._robot.Update_Arms()
-                if self._robot.health < 0 or self._robot.health < 0:
+                if self._robot.health <= 0 or self._player.health <= 0:
                         self._gameOver = True
-        def Draw( self ):
-                        #self._player.Draw()
-                        #self._robot.Draw()
-                        #if self._gameOver == True:
-                                
+        def Draw( self ):        
                         self._package.EndThread()
-        def EndGame( self ):
-                self._package.BeginThread()
-                if self._player.health < 0:
-                        self._exploader.setX( self._player.position.x )
-                        self._exploader.setY( self._player.position.y )
-                if self._robot.health < 0:
-                        self._exploader.setX( self._player.position.x )
-                        self._exploader.setY( self._robot.position.y )
-                        self._exploader.Refresh()
-                        self._package.setKOposition()
-                        Window.blit( self._package.thread.kO.sprite, (self._package.thread.kO.x, self._package.thread.kO.y) )
-                else:
-                        if W == self._gameOver:
-                                self._gameOver = False
-                                self.CleanUp()
-                        if S == self._gameOver:
-                                self._end = True
-                                self.CleanUp()
-        def CleanUp( self ):
-                del self._player
-                del self._robot
-                del self._package
-                del self._gameOver
-                del self._exploader
 
 
 
@@ -1385,66 +1404,26 @@ class TwoPlayerLevel( Level ):
 
 
 
-
-
-
-def TwoPlayer( gameThread ):
-        GameOver = False
-        player1 = Player1( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
-        player1.SetBotPosition( 100, 270 )
-        player1.ArmCalc()
-        player1.box.x_offset = 32
-        player1.box.y_offset = 30
-        player2 = Player2( "Red Bot/Robot_StandF.png", "Red Bot/Robot_StandB.png", "Red Bot/Robot_ArmF.png", "Red Bot/Robot_ArmB.png", "Red Bot/Robot_JumpingF.png", "Red Bot/Robot_JumpingB.png" )
-        player2.SetBotPosition( 200, 270 )
-        player2.ArmCalc()
-        player2.box.x_offset = 12
-        player2.box.y_offset = 20
-        gameThread.koP.y = 400
-        ex = Exploader( 100.1, 100.1 )
-        explosionCoords = XY()
-        Test = ArtificalIntelegence( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
-        Test.SetBotPosition( 300, 273 )
-        Test.ArmCalc()
-        Test.box.x_offset = 8
-        Test.box.y_offset = 20
-        tester = AI_Controler()
-        #A = Test.position.y
-        while True:
-                gameThread.MainGameThreadBegin()
-                if GameOver == False:
-                        tester.UpdateParamiters( Test, player1 )
-                        Test = tester.Refresh()
-                        Test.Draw()
-                        Test.Update_Arms()
-                        #if A != Test.position.y:
-                        #        A = Test.position.y
-                        #        print( A )
-                        player1 = Refresh_Bot( player1, player2, Z )
-                        player1 = Refresh_Bot( player1, Test, Z )
-                        player2 = Refresh_Bot( player2, player1, RShift )
-                        if player1.health < 0:
-                                GameOver = True
-                                ex.setX( player1.position.x )
-                                ex.setY( player1.position.y )
-                        if player2.health < 0:
-                                GameOver = True
-                                ex.setX( player2.position.x )
-                                ex.setY( player2.position.y )
-                        else:
-                                if gameThread.koP.y > 80:
-                                        gameThread.koP.y -= 1
-                                if W == GameOver:
-                                        break
-                        player1.Update_Arms()
-                        player2.Update_Arms()
-                        player1.Draw()
-                        player2.Draw()
-                        ex.Refresh()
-                Window.blit( gameThread.kO.sprite, (gameThread.koP.x, gameThread.koP.y) )
-                gameThread.MainGameThreadEnd()
-        del player1
-        del player2
+class OnePlayerLevel( Level ):
+        def Initilize( self ):
+                self._player.SetBotPosition( 100, 270 )
+                self._player.ArmCalc()
+                self._player.box.x_offset = 32
+                self._player.box.y_offset = 30
+                self._robot.SetBotPosition( 200, 270 )
+                self._robot.ArmCalc()
+                self._robot.box.x_offset = 8
+                self._robot.box.y_offset = 20
+        def RunLevel( self ):
+                self._player = Refresh_Bot( self._player, self._robot, Z )
+                self._controller.UpdateParamiters( self._robot, self._player )
+                self._robot = self._controller.Refresh()
+                self._player.Update_Arms()
+                self._robot.Update_Arms()
+                if self._robot.health <= 0 or self._player.health <= 0:
+                        self._gameOver = True
+        def Draw( self ):        
+                        self._package.EndThread()
 
 
 
@@ -1459,7 +1438,7 @@ def main():
         RedBot = Robot_Factory( "Red Bot/Robot_StandF.png", "Red Bot/Robot_StandB.png", "Red Bot/Robot_ArmF.png", "Red Bot/Robot_ArmB.png", "Red Bot/Robot_JumpingF.png", "Red Bot/Robot_JumpingB.png" )
         YellowBot = Robot_Factory( "Yellow Bot/Robot_StandF.png", "Yellow Bot/Robot_StandB.png", "Yellow Bot/Robot_ArmF.png", "Yellow Bot/Robot_ArmB.png", "Yellow Bot/Robot_JumpingF.png", "Yellow Bot/Robot_JumpingB.png" )
         GreenBot = Robot_Factory( "Green Bot/Robot_StandF.png", "Green Bot/Robot_StandB.png", "Green Bot/Robot_ArmF.png", "Green Bot/Robot_ArmB.png", "Green Bot/Robot_JumpingF.png", "Green Bot/Robot_JumpingB.png" )
-        level = TwoPlayerLevel( Game, BlueBot.CreatePlayer1(), GreenBot.CreatePlayer2() )
+        level = OnePlayerLevel( Game, BlueBot.CreatePlayer1(), GreenBot.CreateAI(), True )
         while level.Notify() == False:
                 level.Logic()
         
