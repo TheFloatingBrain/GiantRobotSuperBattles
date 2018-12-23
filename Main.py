@@ -1156,11 +1156,26 @@ class Robot_Factory:
         def GetSpriteDirectories( self ):
                 return self._sds
         def CreatePlayer1( self ):
-                return Player1( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                player1 = Player1( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                player1.SetBotPosition( 100, 270 )
+                player1.ArmCalc()
+                player1.box.x_offset = 32
+                player1.box.y_offset = 30
+                return player1
         def CreatePlayer2( self ):
-                return Player2( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                player2 = Player2( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                player2.SetBotPosition( 100, 270 )
+                player2.ArmCalc()
+                player2.box.x_offset = 32
+                player2.box.y_offset = 30
+                return player2
         def CreateAI( self ):
-                return ArtificalIntelegence( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                AI = ArtificalIntelegence( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                AI.SetBotPosition( 300, 273 )
+                AI.ArmCalc()
+                AI.box.x_offset = 8
+                AI.box.y_offset = 20
+                return AI
         spriteDirectories = property( GetSPriteDirectories, "All the sprite directories." )
 
 
@@ -1228,10 +1243,16 @@ class AI_Controler:
 #More will be implemented.
 class GamePackage:
         def __init__( self, baground_sprite_dir, ko_object ):
-                self._thread = Thread( KO, XY(), baground_sprite
+                self._thread = Thread( KO, XY(), baground_sprite )
         def getThread( self ):
                 return self._thread
-        def setKOposition( 
+        def BeginThread( self ):
+                self._thread.MainGameThreadBegin()
+        def EndThread( self ):
+                self._thread.MainGameThreadEnd()
+        def setKOposition( self )
+                if self._thread.koP.y > 80:
+                        self._thread.koP.y -= 1
         thread = property( getThread, "Main game thread." )
 
 
@@ -1254,23 +1275,96 @@ class GamePackage:
 
 #Base class for a level, so its not so messy.
 class Level:
-        def __init__( Package, Player1, Robot ):
-                self._player = Player1
-                self._robot = Robot
+        def __init__( Package, Obj1, Obj2 ):
+                self._player = Obj1
+                self._robot = Obj2
                 self._package = Package
+                self._exploader = Exploader( 100.1, 100.1 )
+                self._gameOver = False
+                self._end = False
+                self.Initilize()
         def Draw( self ):
                 pass
         def EndGame( self ):
-                if self._package.thread.koP.y > 80:
-                        self._package.thread.koP.y -= 1
+                pass
         def RunLevel( self ):
                 pass
         def Initilize( self ):
                 pass
         def CleanUp( self ):
                 pass
+        def Logic( self ):
+                if self._gameOver == False:
+                        self.RunLevel()
+                else:
+                        self.EndGame()
+                self.Draw()
+        def getKO( self ):
+                return self._package.kO
+        def Notify( self ):
+                return self._end
+        KO = property( getKO )
 
 
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+
+class TwoPlayerLevel( Level ):
+        def Initilize( self ):
+                self._player.SetBotPosition( 100, 270 )
+                self._player.ArmCalc()
+                self._player.box.x_offset = 32
+                self._player.box.y_offset = 30
+                self._robot.SetBotPosition( 200, 270 )
+                self._robot.ArmCalc()
+                self._robot.box.x_offset = 12
+                self._robot.box.y_offset = 20
+        def RunLevel( self ):
+                self._package.BeginThread()
+                self._player = Refresh_Bot( self._player, self._robot, Z )
+                self._robot = Refresh_Bot( self._robot, self._player, RShift )
+                self._player.Update_Arms()
+                self._robot.Update_Arms()
+                if self._robot.health < 0 or self._robot.health < 0:
+                        self._gameOver = True
+        def Draw( self ):
+                        self._player.Draw()
+                        self._robot.Draw()
+        def EndGame( self ):
+                if self._player.health < 0:
+                        self._exploader.setX( self._player.position.x )
+                        self._exploader.setY( self._player.position.y )
+                if self._robot.health < 0:
+                        self._exploader.setX( self._player.position.x )
+                        self._exploader.setY( self._robot.position.y )
+                        self._exploader.Refresh()
+                        self._package.setsetKOPosition()
+                        Window.blit( self._package.thread.kO.sprite, (self._package.thread.kO.x, self._package.thread.kO.y) )
+                else:
+                        if W == self._gameOver:
+                                self._gameOver = False
+                                self.CleanUp()
+                        if S == self._gameOver:
+                                self._end = True
+                                self.CleanUp()
+        def CleanUp( self ):
+                del self._player
+                del self._robot
+                del self._package
+                del self._gameOver
+                del self._exploader
 
 
 
@@ -1353,12 +1447,7 @@ def TwoPlayer( gameThread ):
 
 
 def main():
-        Backround = Sprite_Object( "Back.png" )
-        KO = Sprite_Object( "KO.png" )
-        KOp = XY()
-        KOp.x = 200
-        KOp.y = 400
-        Thread = GameThread( KO, KOp, Backround  )
-        while True:
-                TwoPlayer( Thread )
+        Game = GamePackage( "Bacj.png", "KO.png" )
+        BlueBot = Robot_Factory(
+        
 main()
