@@ -2,6 +2,7 @@
 import pygame, sys, pygame.mixer
 from pygame.locals import *
 import math
+import random
 
 
 
@@ -455,7 +456,7 @@ class Robot_Base:
                 self._ArmPos.x -= self._ArmDis.x
                 self._ArmPos.y = self._Position.y
                 self._ArmPos.y -= self._ArmDis.y
-        def Jump_Player( self ):
+        def Jump( self ):
                 if self._Jump == True:
                         self.jc += 1
                         if self.jc >= 100:
@@ -692,7 +693,7 @@ def Refresh_Bot( Robot, OtherBot, Punch ):
                 Robot.health = Robot.health - 1
         Robot = CM.Update_Physics( Robot, OtherBot )
         if Robot.jump == True:
-                Robot.Jump_Player()
+                Robot.Jump()
         if Robot.position.x > 600:
                 Robot.vector.x = -1
                 Robot.vector.y = 0
@@ -826,6 +827,175 @@ class GameThread:
 #################################
 
 
+
+
+
+class Exploader:
+        def __init__( self, x, y ):
+                self.booms = []
+                self.all_coords = []
+                self.X = x
+                self.Y = y
+                self.random = 0
+                self.size = 0
+        def Randomize_R( self ):
+                self.random = random.randint( 0, 100 )
+        def Create( self ):
+                if self.random >= 10 and self.random <= 15:
+                        if self.size >= 10:
+                                i = 9
+                                while i >= 0:
+                                        del self.booms[i]
+
+                                        del self.all_coords[i]
+                                        i -= 1
+                                self.size = 0
+                        self.size += 1
+                        self.booms.append( Sprite_Object( "Explosion.png" ) )
+                        self.all_coords.append( XY() )
+                        self.all_coords[self.size - 1].x = random.uniform( self.X, self.X + 32 )
+                        self.all_coords[self.size - 1].y = random.uniform( self.Y, self.Y + 128 )
+        def Refresh( self ):
+                self.Randomize_R()
+                self.Create()
+                i = 0
+                i2 = 0
+                while i < self.size:
+                        Window.blit( self.booms[i].sprite, (self.all_coords[i].x, self.all_coords[i].y) )
+                        i += 1
+        def setX( self, value ):
+                self.X = value
+        def setY( self, value ):
+                self.Y = value
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+class Returner:
+        def __init__( self ):
+                self._position = XY()
+                self._foward = True
+                self._back = False
+                self._vector = Vector()
+        def setPosition( self, value ):
+                self._position = value
+        def setFoward( self, value ):
+                self._foward = value
+        def setBack( self, value ):
+                self._back = value
+        def setVector( self, value ):
+                self._vector = value
+        def getPosition( self ):
+                return self._position
+        def getFoward( self ):
+                return self._foward
+        def getBack( self ):
+                return self._back
+        def getVector( self ):
+                return self._vector
+        def DefaultAll( self ):
+                self._position = XY()
+                self._foward = True
+                self._back = False
+                self._vector = Vector()
+        def DefaultDirection( self ):
+                self._foward = True
+                self._back = False
+        position = property( getPosition, setPosition, "The position." )
+        foward = property( getFoward, setFoward, "Are we going foward?" )
+        back = property( getBack, setBack, "Are we going backwords?" )
+        vector = property( getVector, setVector, "The objects vector." )
+
+
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+
+#AI behavor base class.
+class Behavor:
+        def __init__( self ):
+                self._position = XY()
+                self._behavorDeterminBox = Bounding_Box()
+                self._punchBox = Bounding_Box()
+                self._foward = True
+                self._back = False
+                self._otherFront = True
+                self._otherBack = False
+                self._otherFace == True
+                self._bbbCollided = False
+                self._pbbCollided = False
+                self._vector = Vector()
+        def UpdateParams( self, AI ):
+                self._position = AI.position
+                self._foward = AI.foward
+                self._back = AI.back
+        def IsFacing( self, Other ):
+                if Other.foward == self._foward or Other.back == self._back:
+                        self._otherFace = False
+                else:
+                        self._otherFace = True
+        def Which_Side( self, Other ):
+                if Other.position.x > self._position.x:
+                        self._otherFront = False
+                        self._otherBack = True
+                else:
+                        self._otherFront = True
+                        self._otherBack = False
+        def Manage_Collision( boundingBox ):
+                self._bbbCollided = CM.Check_Collision( self._behavorDeterminBox, boundingBox )
+                self._pbbCollided = CM.Check_Collision( self._punchBox, boundingBox )
+                if self._bbbCollided == True and self._pbbCollided == True:
+                        self._bbbCollided = False
+        def FowardAlt( self ):
+                pass
+        def BackAlt( self ):
+                pass
+        def FowardDecision( self ):
+                pass
+        def BackDecision( self ):
+                pass
+        def Decision( self ):
+                pass
+        def Refresh( self ):
+                pass
+        def Notify( self ):
+                return 
+
+
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+
+
 def TwoPlayer( gameThread ):
         GameOver = False
         player1 = Player1( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
@@ -839,18 +1009,31 @@ def TwoPlayer( gameThread ):
         player2.box.x_offset = 12
         player2.box.y_offset = 20
         gameThread.koP.y = 400
+        ex = Exploader( 100.1, 100.1 )
+        explosionCoords = XY()
         while True:
                 gameThread.MainGameThreadBegin()
                 if GameOver == False:
                         player1 = Refresh_Bot( player1, player2, Z )
                         player2 = Refresh_Bot( player2, player1, RShift )
-                        if player1.health < 0 or player2.health < 0:
+                        if player1.health < 0:
                                 GameOver = True
+                                ex.setX( player1.position.x )
+                                ex.setY( player1.position.y )
+                        if player2.health < 0:
+                                GameOver = True
+                                ex.setX( player2.position.x )
+                                ex.setY( player2.position.y )
                 else:
                         if gameThread.koP.y > 80:
                                 gameThread.koP.y -= 1
                         if W == GameOver:
                                 break
+                        player1.Update_Arms()
+                        player2.Update_Arms()
+                        player1.Draw()
+                        player2.Draw()
+                        ex.Refresh()
                 Window.blit( gameThread.kO.sprite, (gameThread.koP.x, gameThread.koP.y) )
                 gameThread.MainGameThreadEnd()
         del player1
@@ -862,7 +1045,7 @@ def TwoPlayer( gameThread ):
 
 
 def main():
-        Backround = Sprite_Object( "Back.jpg" )
+        Backround = Sprite_Object( "Back.png" )
         KO = Sprite_Object( "KO.png" )
         KOp = XY()
         KOp.x = 200
