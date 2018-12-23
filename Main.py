@@ -67,6 +67,7 @@ class Sprite_Object:
                 return self._y
         def setX( self, value ):
                 self._x = value
+                
         def setY( self, value ):
                 self._y = value
         def delX( self ):
@@ -317,6 +318,11 @@ class Collision_Manager:
                 return False
 CM = Collision_Manager()
 
+
+
+
+
+
 #################################
 #                               #
 #                               #
@@ -490,6 +496,10 @@ class Robot_Base:
                 return self._Health
         def setHealth( self, value ):
                 self._Health = value
+        def SetFowardRaw( self, value ):
+                self._Fwd = value
+        def SetBackwardRaw( self, value ):
+                self._Bkwd = value
         def Punch( self ):
                 if self._ArmTime >= 1:
                         pass
@@ -639,10 +649,6 @@ class Player2( PlayerBase ):
                                         self._Bkwd = True
                                 if Up == True:
                                         self._Jump = True
-
-
-
-
 
 #################################
 #                               #
@@ -1010,6 +1016,8 @@ class Behavor:
                 pass
         def Default( self ):
                 pass
+        def DefaultAll( self ):
+                pass
         def Decision( self ):
                 self.IsFacing( self._targate )
                 self.Which_Side( self._targate )
@@ -1030,12 +1038,10 @@ class Behavor:
                 pass
         def Notify( self, AI ):
                 AI.position = self._position
-                AI.setFwd( self._foward )
-                AI.setBkwd( self._back )
+                AI.SetFowardRaw( self._foward )
+                AI.SetBackwardRaw( self._back )
                 AI.vector = self._vector
-                print( "Self ", self._foward )
-                print( " AI ", AI.foward )
-                #AI = Combat( AI, self._combat )
+                AI = Combat( AI, self._combat )
                 return AI
 
 
@@ -1057,54 +1063,45 @@ class Behavor:
 
 class Agressive( Behavor ):
         def Default( self ):
-                #print( "Default" )
                 t = Vector()
                 t.setBegin( self._position.x, self._position.y )
                 self._combat = False
-                #print( "Before: ", self._foward )
                 if self._otherFront == True:
                         t.setDestination( self._position.x + self._speed, self._position.y )
-                        self._back = True
-                        self._foward = False
-                else:
-                        t.setDestination( self._position.x - self._speed, self._position.y )
                         self._back = False
                         self._foward = True
-                #print( "After: ", self._foward )
+                else:
+                        t.setDestination( self._position.x - self._speed, self._position.y )
+                        self._back = True
+                        self._foward = False
                 t = Calc( t, self._position )
                 self._vector.x = t.x
                 self._position = Move( self._vector, self._position )
         def FowardAlt( self ):
-                #print( "Foward Alt" )
-                self._vector.x = 0
-                self._vector.y = 0
-                self._back = True
-                self._foward = False
-                self._combat = True
-                #print( "Punch Foward" )
-        def BackAlt( self ):
-                #print( "Back Alt" )
                 self._vector.x = 0
                 self._vector.y = 0
                 self._back = False
                 self._foward = True
                 self._combat = True
-                #print( "Punch Back." )
-        def FowardDecision( self ):
-                #print( "Foward" )
-                self._vector.setBegin( self._position.x, self._position.y )
-                self._vector.setDestination( self._position.x + .05, self._position.y )
+        def BackAlt( self ):
+                self._vector.x = 0
+                self._vector.y = 0
                 self._back = True
                 self._foward = False
+                self._combat = True
+        def FowardDecision( self ):
+                self._vector.setBegin( self._position.x, self._position.y )
+                self._vector.setDestination( self._position.x + .05, self._position.y )
+                self._back = False
+                self._foward = True
                 self._combat = False
                 self._vector = Calc( self._vector, self._position )
                 self._position = Move( self._vector, self._position )
         def BackDecision( self ):
-                #print( "Back" )
                 self._vector.setBegin( self._position.x, self._position.y )
                 self._vector.setDestination( self._position.x - .05, self._position.y )
-                self._back = False
-                self._foward = True
+                self._back = True
+                self._foward = False
                 self._combat = False
                 self._vector = Calc( self._vector, self._position )
                 self._position = Move( self._vector, self._position )
@@ -1136,17 +1133,70 @@ class ArtificalIntelegence( Robot_Base ):
                 #        return "agress"
                 return "agress"
 
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+
+
+#Makes it so there is no long constructor for a robot.
+class Robot_Factory:
+        def __init__( self, F, B ,AF, AB, JF, JB ):
+                self._sds = [ f = F, b = B, af = AF, jf = JF, jb = JB ]
+        def GetSpriteDirectories( self ):
+                return self._sds
+        def CreatePlayer1( self ):
+                return Player1( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+        def CreatePlayer2( self ):
+                return Player2( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+        def CreateAI( self ):
+                return ArtificalIntelegence( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+        spriteDirectories = property( GetSPriteDirectories, "All the sprite directories." )
+
+
+
+
+
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+
+
+
+
+
 class AI_Controler:
-        def __init__( self ):
+        def __init__( self, RobotFactory ):
                 self._ag = Agressive()
-                self._targate = Player1( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
-                self._ai = ArtificalIntelegence( "Blue Bot/Robot_StandF.jpg", "Blue Bot/Robot_StandB.jpg", "Blue Bot/Robot_ArmF.png", "Blue Bot/Robot_ArmB.png", "Blue Bot/Robot_JumpingF.jpg", "Blue Bot/Robot_JumpingB.jpg" )
+                self._targate = RobotFactory.CreatePlayer1()
+                self._ai = RobotFactory.CreateAI()
         def UpdateParamiters( self, AI, targate ):
                 self._targate = targate
                 self._ai = AI
         def Refresh( self ):
-                #ManageCollision( self._ai, self._targate )
-                #self._ai = CM.Update_Physics( self._ai, self._targate )
+                ManageCollision( self._ai, self._targate )
+                self._ai = CM.Update_Physics( self._ai, self._targate )
                 if self._ai.BehavorDecide() == "agress":
                         self._ag.UpdateParams( self._ai, self._targate )
                         self._ag.Decision()
@@ -1156,6 +1206,69 @@ class AI_Controler:
                 self._ai.Update_Arms()
                 return self._ai
 
+        
+
+
+
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+
+#More will be implemented.
+class GamePackage:
+        def __init__( self, baground_sprite_dir, ko_object ):
+                self._thread = Thread( KO, XY(), baground_sprite
+        def getThread( self ):
+                return self._thread
+        def setKOposition( 
+        thread = property( getThread, "Main game thread." )
+
+
+
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+
+
+#Base class for a level, so its not so messy.
+class Level:
+        def __init__( Package, Player1, Robot ):
+                self._player = Player1
+                self._robot = Robot
+                self._package = Package
+        def Draw( self ):
+                pass
+        def EndGame( self ):
+                if self._package.thread.koP.y > 80:
+                        self._package.thread.koP.y -= 1
+        def RunLevel( self ):
+                pass
+        def Initilize( self ):
+                pass
+        def CleanUp( self ):
+                pass
 
 
 
