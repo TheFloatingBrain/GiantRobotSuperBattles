@@ -1,6 +1,7 @@
 #Include nessesary files.
 import pygame, sys, pygame.mixer
 from pygame.locals import *
+from Sprite_Object import Sprite_Object
 import math
 import random
 import os
@@ -48,7 +49,7 @@ KOSound = pygame.mixer.Sound( "Sounds/KO.wav" )
 
 
 
-#A sprite class makes everything easier.
+"""#A sprite class makes everything easier.
 class Sprite_Object:
         def __init__( self, file ):
                 self._Sprite=pygame.image.load(file).convert_alpha()
@@ -101,7 +102,7 @@ class Sprite_Object:
         sprite = property( getSprite, setSprite, delSprite, "The Sprite" )
         x = property( getX, setX, delX, "X position" )
         y = property( getY, setY, delY, "Y psoition" )
-        angle = property( getAngle, "Get the angle." )
+        angle = property( getAngle, "Get the angle." )"""
 
 
 
@@ -1912,9 +1913,10 @@ def main():
         choices = [ "Blue Bot Icon.png", "Red Bot Icon.png", "Green Bot Icon.png", "Yellow Bot Icon.png" ]
         alts = [ "Default.png", "Default.png", "Default.png", "Default.png" ]
         menu = Menu( 4, choices, 300.0, 60.0, "Cursor.png", 64.0, alts, pygame.mixer.Sound( "Sounds/Menu/Option2.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
-        gt = [ "1Player.png", "2Player.png" ]
-        gtalts = [ "1Palt.png", "2Palt.png" ]
-        startMenu = Menu( 2, gt, 240, 230.0, "Cursor.png", 64.0, gtalts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        gt = [ "1Player.png", "2Player.png", "Online.png" ]
+        gtalts = [ "1Palt.png", "2Palt.png", "OnlineAlt.png" ]
+        #230.0
+        startMenu = Menu( 3, gt, 240, 166.0, "Cursor.png", 64.0, gtalts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
         startMenu.buttons[0].action = GameType( 0 )
         startMenu.buttons[1].action = GameType( 1 )
         menu.buttons[0].action = BotChoice( 0 )
