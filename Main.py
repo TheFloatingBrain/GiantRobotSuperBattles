@@ -301,14 +301,10 @@ class Collision_Manager:
                 Vector.x = Vector.x - Vector.x * Collision_Scale
                 Vector.y = Vector.y - Vector.y * Collision_Scale
                 return Vector
-        def ArmRead( self, Vector, Collision_Scale, P1, P2 ):
-                Vector.x = Vector.x - Vector.x * Collision_Scale
-                Vector.y = Vector.y - Vector.y * Collision_Scale
-                return Vector
         #Update Reactions to the collision.
         def Update_Physics( self, Robot, OtherBot ):
                 if Robot.collision == True:
-                        Robot.vector = self.React( Robot.vector, 1.0 / Robot.reaction, Robot.position, OtherBot.position )
+                        Robot.vector = self.React( Robot.vector, Robot.reaction, Robot.position, OtherBot.position )
                         Robot.collision = False
                         Robot.stop = False
                 if Robot.arm_col == True:
@@ -333,7 +329,6 @@ class Collision_Manager:
                 X = False
                 Y = False
                 if A.position.x + A.x_offset > B.position.x - B.x_offset and A.position.x - A.x_offset < B.position.x + B.x_offset:
-                        #if ( A.position.x + A.x_offset < B.position.x + B.x_offset and A.position.x + A.x_offset > B.position.x ) or ( A.position.x < B.position.x + B.x_offset and A.position.x > B.position.x ):
                         X = True
                 if A.position.y + A.y_offset > B.position.y - B.y_offset and A.position.y - A.y_offset < B.position.y + B.y_offset:
                         Y = True
@@ -403,10 +398,6 @@ class Robot_Base:
                 self.walkSound = pygame.mixer.Sound( "Sounds/Robo/Walk.wav" )
                 walkChannels += 1
                 self.walkChannel = walkChannels
-                self.arm_x_offset = 10
-                self.arm_y_offset = 30
-                self.arm_box_x_offset_default = 16#32
-                self.arm_box_y_offset_default = 8#16
                 #self._kickBox.
         def getAT( self ):
                 return self._ArmTime
@@ -431,11 +422,8 @@ class Robot_Base:
         def SetBotPosition( self, X, Y ):
                 self._Position.x = X
                 self._Position.y = Y
-                if self._Fwd == True and self._Bkwd == False:
-                        self._ArmPos.x = X + self.arm_x_offset
-                elif self._Fwd == False and self._Bkwd == True:
-                        self._ArmPos.x = X - self.arm_x_offset
-                self._ArmPos.y = Y + self.arm_y_offset
+                self._ArmPos.x = X + 10
+                self._ArmPos.y = Y + 30
                 self.Box.position.x = X
                 self.Box.position.y = Y
         def getBox( self ):
@@ -513,10 +501,7 @@ class Robot_Base:
                                 self._gushTime -= 1
         def Update_Arms( self ):
                 self._ArmPos.x = self._Position.x
-                if self._Fwd == True and self._Bkwd == False:
-                        self._ArmPos.x -= self._ArmDis.x
-                elif self._Fwd == False and self._Bkwd == True:
-                        self._ArmPos.x -= self._ArmDis.x
+                self._ArmPos.x -= self._ArmDis.x
                 self._ArmPos.y = self._Position.y
                 self._ArmPos.y -= self._ArmDis.y
         def Jump( self ):
@@ -556,8 +541,8 @@ class Robot_Base:
                 self._gushTime = value
         def Punch( self ):
                 pass
-        #def CheckPunch( self ):
-        #        pass
+        def CheckPunch( self ):
+                pass
         def getHealth( self ):
                 return self._Health
         def setHealth( self, value ):
@@ -585,22 +570,14 @@ class Robot_Base:
                         self._ArmPos = Move( self._ArmVect, self._ArmPos )
                         self._ArmBox.position.x = self._ArmPos.x
                         self._ArmBox.position.y = self._ArmPos.y
-                        if self._Fwd == True and self._Bkwd == False:
-                                self._ArmBox.x_offset = self.arm_box_x_offset_default
-                                self._ArmBox.position.x = self._Position.x - self.arm_box_x_offset_default
-                        elif self._Fwd == False and self._Bkwd == True:
-                                self._ArmBox.x_offset = self.arm_box_x_offset_default
-                        self._ArmBox.y_offset = self.arm_box_y_offset_default
+                        self._ArmBox.x_offset = 32
+                        self._ArmBox.y_offset = 16
                 if self._ArmTime > 20:
                         self._ArmTime = 0
                         self._ArmVect.x = 0
                         self._ArmVect.y = 0
-                        #self._ArmPos.x = self._Position.x + self.arm_x_offset
-                        self._ArmPos.y = self._Position.y + self.arm_y_offset
-                        if self._Fwd == True and self._Bkwd == False:
-                                self._ArmPos.x = self._Position.x + self.arm_x_offset
-                        elif self._Fwd == False and self._Bkwd == True:
-                                self._ArmPos.x = self._Position.x - self.arm_x_offset
+                        self._ArmPos.x = self._Position.x + 10
+                        self._ArmPos.y = self._Position.y + 30
         vector = property( getV, setV, "The vector." )
         position = property( getP, setP, "The position." )
         arm_position = property( getAP, setAP, "The arms position." )
@@ -1691,15 +1668,12 @@ class TwoPlayerLevel( Level ):
         def Initilize( self ):
                 self._player.SetBotPosition( 100, 270 )
                 self._player.ArmCalc()
-                self._player.box.x_offset = 12#32
-                self._player.box.y_offset = 30#30
+                self._player.box.x_offset = 32
+                self._player.box.y_offset = 30
                 self._robot.SetBotPosition( 200, 270 )
                 self._robot.ArmCalc()
-                self._robot.box.x_offset = 12#32#8 #12
-                self._robot.box.y_offset = 30#30#20 #20
-                self._robot.arm_x_offset = self._robot.arm_x_offset
-                self._robot.arm_box_x_offset_default = self._robot.arm_box_x_offset_default
-                #self._robot.box.arm_offset_y = -self._robot.box.arm_offset_y
+                self._robot.box.x_offset = 12
+                self._robot.box.y_offset = 20
         def RunLevel( self ):
                 self._player = Refresh_Bot( self._player, self._robot, Z )
                 self._robot = Refresh_Bot( self._robot, self._player, RShift )
@@ -1835,7 +1809,7 @@ class GameType( ButtonAction ):
 
 
 class Menu:
-        def __init__( self, numberOfButtons, Button_Images, x, startingY, Cursor, increment, ButtonAlts ):
+        def __init__( self, numberOfButtons, Button_Images, x, startingY, Cursor, increment, ButtonAlts, optionSound, selectSound ):
                 self._middle = len(Button_Images) / 2
                 self._buttons = self.InitButtons()
                 self._currentButton = numberOfButtons - 1
@@ -1848,6 +1822,8 @@ class Menu:
                 self._x = x
                 self._lastY = 0.0
                 self._lastPosition = self._cursorPosition.y
+                self._optionSound = optionSound
+                self._selectSound = selectSound
                 i = 0
                 self._itemCoords = self.InitCoords()
                 while i < numberOfButtons:
@@ -1877,15 +1853,18 @@ class Menu:
                 t = 0
                 self._buttons[self._currentButton].selected = False
                 if Down == True:
+                        pygame.mixer.Channel( 0 ).play( self._optionSound )
                         self._currentButton -= 1
                         if self._currentButton < 0:
                                 self._currentButton = len(self._buttons) - 1
                 if Up == True:
+                        self._optionSound.play()
                         self._currentButton += 1
                         if self._currentButton > len(self._buttons ) - 1:
                                 self._currentButton = 0
                 self._cursorPosition.y = self._itemCoords[self._currentButton].y + 64
                 if Right == True:
+                        self._selectSound.play()
                         self._buttons[self._currentButton].activate = True
                 while t < 50:
                         Wait()
@@ -1932,17 +1911,17 @@ def main():
         Bots = [ BlueBot, RedBot, YellowBot, GreenBot ]
         choices = [ "Blue Bot Icon.png", "Red Bot Icon.png", "Green Bot Icon.png", "Yellow Bot Icon.png" ]
         alts = [ "Default.png", "Default.png", "Default.png", "Default.png" ]
-        menu = Menu( 4, choices, 300.0, 60.0, "Cursor.png", 64.0, alts )
+        menu = Menu( 4, choices, 300.0, 60.0, "Cursor.png", 64.0, alts, pygame.mixer.Sound( "Sounds/Menu/Option2.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
         gt = [ "1Player.png", "2Player.png" ]
         gtalts = [ "1Palt.png", "2Palt.png" ]
-        startMenu = Menu( 2, gt, 240, 230.0, "Cursor.png", 64.0, gtalts )
+        startMenu = Menu( 2, gt, 240, 230.0, "Cursor.png", 64.0, gtalts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
         startMenu.buttons[0].action = GameType( 0 )
         startMenu.buttons[1].action = GameType( 1 )
         menu.buttons[0].action = BotChoice( 0 )
         menu.buttons[1].action = BotChoice( 1 )
         menu.buttons[2].action = BotChoice( 3 )
         menu.buttons[3].action = BotChoice( 2 )
-        levelMenu = Menu( 3, levelChoices, 300.0, 60.0, "Cursor.png", 80.0, levelChoiceAlts )
+        levelMenu = Menu( 3, levelChoices, 300.0, 60.0, "Cursor.png", 80.0, levelChoiceAlts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
         levelMenu.buttons[0].action = BotChoice( 0 )
         levelMenu.buttons[1].action = BotChoice( 1 )
         levelMenu.buttons[2].action = BotChoice( 2 )
