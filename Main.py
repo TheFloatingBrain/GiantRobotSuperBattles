@@ -1548,8 +1548,12 @@ class Level:
                                  Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ),
                                  Sprite_Object( "Bar.png" ) ]
                 self._rHBars = self._pHBars
-                self._player = Obj1
-                self._robot = Obj2
+                if AI == True:
+                        self._player = Obj2
+                        self._robot = Obj1
+                if AI == False:
+                        self._player = Obj1
+                        self._robot = Obj2
                 self._package = Package
                 self._exploader = Exploader( 100.1, 100.1 )
                 self._gameOver = False
