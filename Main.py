@@ -1548,12 +1548,8 @@ class Level:
                                  Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ),
                                  Sprite_Object( "Bar.png" ) ]
                 self._rHBars = self._pHBars
-                if AI == True:
-                        self._player = Obj2
-                        self._robot = Obj1
-                if AI == False:
-                        self._player = Obj1
-                        self._robot = Obj2
+                self._player = Obj1
+                self._robot = Obj2
                 self._package = Package
                 self._exploader = Exploader( 100.1, 100.1 )
                 self._gameOver = False
@@ -1672,17 +1668,17 @@ class TwoPlayerLevel( Level ):
         def Initilize( self ):
                 self._player.SetBotPosition( 100, 270 )
                 self._player.ArmCalc()
-                self._player.box.x_offset = 32
+                self._player.box.x_offset = 12#32
                 self._player.box.y_offset = 30
                 self._robot.SetBotPosition( 200, 270 )
                 self._robot.ArmCalc()
                 self._robot.box.x_offset = 12
-                self._robot.box.y_offset = 20
+                self._robot.box.y_offset = 30#20
         def RunLevel( self ):
                 self._player = Refresh_Bot( self._player, self._robot, Z )
                 self._robot = Refresh_Bot( self._robot, self._player, RShift )
-                self._player.Update_Arms()
                 self._robot.Update_Arms()
+                self._player.Update_Arms()
                 if self._robot.health <= 0 or self._player.health <= 0:
                         self._gameOver = True
         def Draw( self ):        
