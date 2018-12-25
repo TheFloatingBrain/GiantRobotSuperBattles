@@ -301,10 +301,14 @@ class Collision_Manager:
                 Vector.x = Vector.x - Vector.x * Collision_Scale
                 Vector.y = Vector.y - Vector.y * Collision_Scale
                 return Vector
+        def ArmRead( self, Vector, Collision_Scale, P1, P2 ):
+                Vector.x = Vector.x - Vector.x * Collision_Scale
+                Vector.y = Vector.y - Vector.y * Collision_Scale
+                return Vector
         #Update Reactions to the collision.
         def Update_Physics( self, Robot, OtherBot ):
                 if Robot.collision == True:
-                        Robot.vector = self.React( Robot.vector, Robot.reaction, Robot.position, OtherBot.position )
+                        Robot.vector = self.React( Robot.vector, 1.0 / Robot.reaction, Robot.position, OtherBot.position )
                         Robot.collision = False
                         Robot.stop = False
                 if Robot.arm_col == True:
@@ -329,6 +333,7 @@ class Collision_Manager:
                 X = False
                 Y = False
                 if A.position.x + A.x_offset > B.position.x - B.x_offset and A.position.x - A.x_offset < B.position.x + B.x_offset:
+                        #if ( A.position.x + A.x_offset < B.position.x + B.x_offset and A.position.x + A.x_offset > B.position.x ) or ( A.position.x < B.position.x + B.x_offset and A.position.x > B.position.x ):
                         X = True
                 if A.position.y + A.y_offset > B.position.y - B.y_offset and A.position.y - A.y_offset < B.position.y + B.y_offset:
                         Y = True
@@ -398,6 +403,10 @@ class Robot_Base:
                 self.walkSound = pygame.mixer.Sound( "Sounds/Robo/Walk.wav" )
                 walkChannels += 1
                 self.walkChannel = walkChannels
+                self.arm_x_offset = 10
+                self.arm_y_offset = 30
+                self.arm_box_x_offset_default = 16#32
+                self.arm_box_y_offset_default = 8#16
                 #self._kickBox.
         def getAT( self ):
                 return self._ArmTime
@@ -422,8 +431,11 @@ class Robot_Base:
         def SetBotPosition( self, X, Y ):
                 self._Position.x = X
                 self._Position.y = Y
-                self._ArmPos.x = X + 10
-                self._ArmPos.y = Y + 30
+                if self._Fwd == True and self._Bkwd == False:
+                        self._ArmPos.x = X + self.arm_x_offset
+                elif self._Fwd == False and self._Bkwd == True:
+                        self._ArmPos.x = X - self.arm_x_offset
+                self._ArmPos.y = Y + self.arm_y_offset
                 self.Box.position.x = X
                 self.Box.position.y = Y
         def getBox( self ):
@@ -501,7 +513,10 @@ class Robot_Base:
                                 self._gushTime -= 1
         def Update_Arms( self ):
                 self._ArmPos.x = self._Position.x
-                self._ArmPos.x -= self._ArmDis.x
+                if self._Fwd == True and self._Bkwd == False:
+                        self._ArmPos.x -= self._ArmDis.x
+                elif self._Fwd == False and self._Bkwd == True:
+                        self._ArmPos.x -= self._ArmDis.x
                 self._ArmPos.y = self._Position.y
                 self._ArmPos.y -= self._ArmDis.y
         def Jump( self ):
@@ -541,8 +556,8 @@ class Robot_Base:
                 self._gushTime = value
         def Punch( self ):
                 pass
-        def CheckPunch( self ):
-                pass
+        #def CheckPunch( self ):
+        #        pass
         def getHealth( self ):
                 return self._Health
         def setHealth( self, value ):
@@ -570,14 +585,22 @@ class Robot_Base:
                         self._ArmPos = Move( self._ArmVect, self._ArmPos )
                         self._ArmBox.position.x = self._ArmPos.x
                         self._ArmBox.position.y = self._ArmPos.y
-                        self._ArmBox.x_offset = 32
-                        self._ArmBox.y_offset = 16
+                        if self._Fwd == True and self._Bkwd == False:
+                                self._ArmBox.x_offset = self.arm_box_x_offset_default
+                                self._ArmBox.position.x = self._Position.x - self.arm_box_x_offset_default
+                        elif self._Fwd == False and self._Bkwd == True:
+                                self._ArmBox.x_offset = self.arm_box_x_offset_default
+                        self._ArmBox.y_offset = self.arm_box_y_offset_default
                 if self._ArmTime > 20:
                         self._ArmTime = 0
                         self._ArmVect.x = 0
                         self._ArmVect.y = 0
-                        self._ArmPos.x = self._Position.x + 10
-                        self._ArmPos.y = self._Position.y + 30
+                        #self._ArmPos.x = self._Position.x + self.arm_x_offset
+                        self._ArmPos.y = self._Position.y + self.arm_y_offset
+                        if self._Fwd == True and self._Bkwd == False:
+                                self._ArmPos.x = self._Position.x + self.arm_x_offset
+                        elif self._Fwd == False and self._Bkwd == True:
+                                self._ArmPos.x = self._Position.x - self.arm_x_offset
         vector = property( getV, setV, "The vector." )
         position = property( getP, setP, "The position." )
         arm_position = property( getAP, setAP, "The arms position." )
@@ -1548,8 +1571,8 @@ class Level:
                                  Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ),
                                  Sprite_Object( "Bar.png" ) ]
                 self._rHBars = self._pHBars
-                self._player = Obj1
-                self._robot = Obj2
+                self._player = Obj2
+                self._robot = Obj1
                 self._package = Package
                 self._exploader = Exploader( 100.1, 100.1 )
                 self._gameOver = False
@@ -1668,12 +1691,15 @@ class TwoPlayerLevel( Level ):
         def Initilize( self ):
                 self._player.SetBotPosition( 100, 270 )
                 self._player.ArmCalc()
-                self._player.box.x_offset = 32
-                self._player.box.y_offset = 30
+                self._player.box.x_offset = 12#32
+                self._player.box.y_offset = 30#30
                 self._robot.SetBotPosition( 200, 270 )
                 self._robot.ArmCalc()
-                self._robot.box.x_offset = 12
-                self._robot.box.y_offset = 20
+                self._robot.box.x_offset = 12#32#8 #12
+                self._robot.box.y_offset = 30#30#20 #20
+                self._robot.arm_x_offset = self._robot.arm_x_offset
+                self._robot.arm_box_x_offset_default = self._robot.arm_box_x_offset_default
+                #self._robot.box.arm_offset_y = -self._robot.box.arm_offset_y
         def RunLevel( self ):
                 self._player = Refresh_Bot( self._player, self._robot, Z )
                 self._robot = Refresh_Bot( self._robot, self._player, RShift )
