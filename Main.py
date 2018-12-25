@@ -1835,7 +1835,7 @@ class GameType( ButtonAction ):
 
 
 class Menu:
-        def __init__( self, numberOfButtons, Button_Images, x, startingY, Cursor, increment, ButtonAlts, optionSound, selectSound ):
+        def __init__( self, numberOfButtons, Button_Images, x, startingY, Cursor, increment, ButtonAlts ):
                 self._middle = len(Button_Images) / 2
                 self._buttons = self.InitButtons()
                 self._currentButton = numberOfButtons - 1
@@ -1848,8 +1848,6 @@ class Menu:
                 self._x = x
                 self._lastY = 0.0
                 self._lastPosition = self._cursorPosition.y
-                self._optionSound = optionSound
-                self._selectSound = selectSound
                 i = 0
                 self._itemCoords = self.InitCoords()
                 while i < numberOfButtons:
@@ -1879,18 +1877,15 @@ class Menu:
                 t = 0
                 self._buttons[self._currentButton].selected = False
                 if Down == True:
-                        pygame.mixer.Channel( 0 ).play( self._optionSound )
                         self._currentButton -= 1
                         if self._currentButton < 0:
                                 self._currentButton = len(self._buttons) - 1
                 if Up == True:
-                        self._optionSound.play()
                         self._currentButton += 1
                         if self._currentButton > len(self._buttons ) - 1:
                                 self._currentButton = 0
                 self._cursorPosition.y = self._itemCoords[self._currentButton].y + 64
                 if Right == True:
-                        self._selectSound.play()
                         self._buttons[self._currentButton].activate = True
                 while t < 50:
                         Wait()
@@ -1937,17 +1932,17 @@ def main():
         Bots = [ BlueBot, RedBot, YellowBot, GreenBot ]
         choices = [ "Blue Bot Icon.png", "Red Bot Icon.png", "Green Bot Icon.png", "Yellow Bot Icon.png" ]
         alts = [ "Default.png", "Default.png", "Default.png", "Default.png" ]
-        menu = Menu( 4, choices, 300.0, 60.0, "Cursor.png", 64.0, alts, pygame.mixer.Sound( "Sounds/Menu/Option2.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        menu = Menu( 4, choices, 300.0, 60.0, "Cursor.png", 64.0, alts )
         gt = [ "1Player.png", "2Player.png" ]
         gtalts = [ "1Palt.png", "2Palt.png" ]
-        startMenu = Menu( 2, gt, 240, 230.0, "Cursor.png", 64.0, gtalts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        startMenu = Menu( 2, gt, 240, 230.0, "Cursor.png", 64.0, gtalts )
         startMenu.buttons[0].action = GameType( 0 )
         startMenu.buttons[1].action = GameType( 1 )
         menu.buttons[0].action = BotChoice( 0 )
         menu.buttons[1].action = BotChoice( 1 )
         menu.buttons[2].action = BotChoice( 3 )
         menu.buttons[3].action = BotChoice( 2 )
-        levelMenu = Menu( 3, levelChoices, 300.0, 60.0, "Cursor.png", 80.0, levelChoiceAlts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        levelMenu = Menu( 3, levelChoices, 300.0, 60.0, "Cursor.png", 80.0, levelChoiceAlts )
         levelMenu.buttons[0].action = BotChoice( 0 )
         levelMenu.buttons[1].action = BotChoice( 1 )
         levelMenu.buttons[2].action = BotChoice( 2 )
