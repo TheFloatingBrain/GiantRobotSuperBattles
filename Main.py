@@ -8,6 +8,7 @@ import os
 import json
 import threading
 import _thread
+import socket
 
 
 #################################
@@ -1433,6 +1434,20 @@ class Robot_Factory:
                 AI.box.x_offset = 8
                 AI.box.y_offset = 20
                 return AI
+        def CreateLocalOnlinePlayer( self ):
+                localPlayer = LocalOnlinePlayer( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                localPlayer.SetBotPosition( 100, 270 )
+                localPlayer.ArmCalc()
+                localPlayer.box.x_offset = 32
+                localPlayer.box.y_offset = 30
+                return localPlayer
+        def CreateRemoteOnlinePlayer( self ):
+                remotePlayer = RemoteOnlinePlayer( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                remotePlayer.SetBotPosition( 100, 270 )
+                remotePlayer.ArmCalc()
+                remotePlayer.box.x_offset = 32
+                remotePlayer.box.y_offset = 30
+                return remotePlayer
         spriteDirectories = property( GetSpriteDirectories, "All the sprite directories." )
 
 
@@ -2045,6 +2060,20 @@ def PygameUpdate( time ):
         pygame.display.update()
 
 
+class ConnectionInfo:
+        def __init__( self, hostSocket_ ):
+                self.hostSocket = hostSocket_
+                self.client = None
+                self.address = None
+        def HasRecivedConnection():
+                if client != None:
+                        self.lock.release()
+                        return True
+                return False
+
+
+def WaitForConnection( connectionInfo ):
+        ( client, address ) = connectionInfo.hostSocket.accept()
 
 #############MAIN PROECDURE#############
 
@@ -2068,10 +2097,19 @@ def main():
         menu = Menu( 4, choices, 300.0, 60.0, "Cursor.png", 64.0, alts, pygame.mixer.Sound( "Sounds/Menu/Option2.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
         gt = [ "1Player.png", "2Player.png", "Online.png" ]
         gtalts = [ "1Palt.png", "2Palt.png", "OnlineAlt.png" ]
+        hc = [ "Host.png", "Client.png" ]
+        hcalts = [ "HostAlt.png", "ClientAlt.png" ]
+        connectTypeIcons = [ "DirectConnect.png" ]
+        connectTypeAltIcons = [ "DirectConnectAlt.png" ]
+        lobbyIcons = [ "Start.png" ] #, "Kick.png", "GoToMainMenu.png" ]
+        lobbyAltIcons = [ "StartAlt.png" ] #, "KickAlt.png", "GoToMainMenuAlt.png" ]
+        youHaveBeenDisconnectedIcons = [ "Accept.png" ]
+        youHaveBeenDisconnectedAltIcons = [ "AcceptAlt.png" ]
         #230.0
         startMenu = Menu( 3, gt, 240, 166.0, "Cursor.png", 64.0, gtalts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
         startMenu.buttons[0].action = GameType( 0 )
         startMenu.buttons[1].action = GameType( 1 )
+        startMenu.buttons[2].action = GameType( 2 )
         menu.buttons[0].action = BotChoice( 0 )
         menu.buttons[1].action = BotChoice( 1 )
         menu.buttons[2].action = BotChoice( 3 )
@@ -2080,6 +2118,15 @@ def main():
         levelMenu.buttons[0].action = BotChoice( 0 )
         levelMenu.buttons[1].action = BotChoice( 1 )
         levelMenu.buttons[2].action = BotChoice( 2 )
+        onlineRoleMenu = Menu( 2, hc, 240.0, 166.0, "Cursor.png", 64.0, hcalts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        onlineRoleMenu.buttons[0].action = BotChoice( 0 )
+        onlineRoleMenu.buttons[1].action = BotChoice( 1 )
+        connectionTypeMenu = Menu( 1, connectTypeIcons, 240.0, 166.0, "Cursor.png", 64.0, connectTypeAltIcons, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        connectionTypeMenu.buttons[0].action = BotChoice( 0 )
+        lobbyMenu = Menu( 1, lobbyIcons, 240.0, 166.0, "Cursor.png", 64.0, lobbyAltIcons, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        lobbyMenu.buttons[0].action = BotChoice( 0 )
+        disconnectedMenu = Menu( 1, youHaveBeenDisconnectedIcons, 240.0, 166.0, "Cursor.png", 64.0, youHaveBeenDisconnectedAltIcons, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        disconnectedMenu.buttons[0].action = BotChoice( 0 )
         GuiBack = Sprite_Object( "GuiScreen.png" )
         chooseBot = Sprite_Object( "Choose Your Robot.png" )
         chooseStage = Sprite_Object( "Choose Stage.png" )
@@ -2088,10 +2135,18 @@ def main():
         pickScreen1 = False
         pickScreen2 = False
         inGame = False
+        online = False
+        onlineRole = -1
+        connectType = -1
+        lobbyMenuOption = -1
+        disconnectedMenuOption = -1
         p1 = -1
         p2 = -1
         gameType = -1
         whichLevel = -1
+        ip = 'placeholder'
+        hostSocket = None
+        connectionInfo = None
         pygame.display.set_caption( "Giant Robot Super Battles" )
         while True:
                 while startScreen == True:
@@ -2103,6 +2158,8 @@ def main():
                         for i in startMenu.buttons:
                                 if i.Run() != -1:
                                         gameType = i.Run()
+                                        if gameType == 2:
+                                                online = True
                                         i.activate = False
                                         startScreen = False
                                         clock.tick( MENU_SELECT_DELAY )
@@ -2111,7 +2168,55 @@ def main():
                                 os.system( "ReadMe.txt" )
                                 os.system( "EXIT" )
                         PygameUpdate( MENU_TIME )
+                while online == True and onlineRole == -1:
+                        Window.blit( GuiBack.sprite, ( 0, 0 ) )
+                        getEvents()
+                        onlineRoleMenu.Select()
+                        onlineRoleMenu.Draw()
+                        for i in onlineRoleMenu.buttons:
+                                if i.Run() != -1:
+                                        onlineRole = i.Run()
+                                        clock.tick( MENU_SELECT_DELAY )
+                                        i.activate = False
+                                        print( "Online Role: " + str( onlineRole ) )
+                                        if onlineRole == 0:
+                                                hostSocket = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+                                                #TODO actually implement for real.
+                                                hostSocket.bind( ( input( 'Enter IP ---> ' ), 27020 ) )
+                                                hostSocket.listen()
+                                                connectionInfo = ConnectionInfo( hostSocket )
+                                                _thread.start_new_thread( WaitForConnection, ( connectionInfo, ) )
+                                        break
+                        PygameUpdate( MENU_TIME )
+                while online == True and onlineRole == 0 and lobbyMenuOption == -1:
+                        Window.blit( GuiBack.sprite, ( 0, 0 ) )
+                        getEvents()
+                        lobbyMenu.Select()
+                        lobbyMenu.Draw()
+                        for i in lobbyMenu.buttons:
+                                if i.Run() != -1 and connectionInfo.client != None:
+                                        lobbyMenuOption = i.Run()
+                                        clock.tick( MENU_SELECT_DELAY )
+                                        i.activate = False
+                                        print( "Lobby Menu Option: " + str( lobbyMenuOption ) )
+                                        break
+                        PygameUpdate( MENU_TIME )
+                while online == True and onlineRole == 1 and connectType == -1:
+                        Window.blit( GuiBack.sprite, ( 0, 0 ) )
+                        getEvents()
+                        connectionTypeMenu.Select()
+                        connectionTypeMenu.Draw()
+                        for i in connectionTypeMenu.buttons:
+                                if i.Run() != -1:
+                                        connectType = i.Run()
+                                        clock.tick( MENU_SELECT_DELAY )
+                                        i.activate = False
+                                        print( "Connection Type: " + str( lobbyMenuOption ) )
+                                        ip = input( "IP to connect to ---> " )
+                                        break
+                        PygameUpdate( MENU_TIME )
                 while whichLevel == -1:
+                        #TODO modify impleentation for online play.
                         Window.blit( GuiBack.sprite, ( 0, 0 ) )
                         Window.blit( chooseStage.sprite, ( 200, 40 ) )
                         getEvents()
@@ -2148,6 +2253,11 @@ def main():
                                                         inGame= True
                                                         clock.tick( MENU_SELECT_DELAY )
                                                         break
+                        elif gameType == 2:
+                                #@TODO implement multiplayer player select
+                                p1 = 0
+                                p2 = 0
+                                inGame = True
                         else:
                                 while p1 == -1:
                                         Window.blit( GuiBack.sprite, ( 0,0 ) )
@@ -2174,6 +2284,29 @@ def main():
                                 startScreen = True
                                 gameType = -1
                                 whichLevel = -1
+                        elif gameType == 2:
+                                #@TODO implement multiplayer play
+                                if onlineRole == 0:
+                                        level = OnlineHostLevel( levels[ 0 ], Bots[ 0 ].CrreateLocalOnlinePlayer, Bots[ 1 ].CreateRemoteOnlinePlayer(), False, ip, 27020, hostSocket )
+                                        while level.Notify() == False:
+                                                level.Logic()
+                                if onlineRole == 1:
+                                        level = OnlineClientLevel( levels[ 0 ], Bots[ 1 ].CrreateLocalOnlinePlayer, Bots[ 0 ].CreateRemoteOnlinePlayer(), False, ip, 27020 )
+                                        while level.Notify() == False:
+                                                level.Logic()
+                                inGame = False
+                                online = False
+                                onlineRole = -1
+                                connectType = -1
+                                lobbyMenuOption = -1
+                                disconnectedMenuOption = -1
+                                p1 = -1
+                                p2 = -1
+                                gameType = -1
+                                whichLevel = -1
+                                ip = 'placeholder'
+                                hostSocket = None
+                                connectionInfo = None
                         else:
                                 level = TwoPlayerLevel( levels[whichLevel], Bots[p1].CreatePlayer1(), Bots[p2].CreatePlayer2(), False )
                                 while level.Notify() == False:
