@@ -729,14 +729,14 @@ class LocalOnlinePlayer( OnlinePlayer ):
                 self.seperator = ', '
                 self.jumpPress = '"jumpPress" : '
                 self.forwardPress = '"forwardPress" : '
-                self.backwardPress = '"backwardPress : '
+                self.backwardPress = '"backwardPress" : '
                 self.punchPress = '"punchPress" : '
                 self.jumpPressBuffer = ''
                 self.forwardPressBuffer = ''
                 self.backwardPressBuffer = ''
                 self.punchPressBuffer = ''
-                self.beginMarker = '{'
-                self.endMarker = '}'
+                self.beginMarker = '{ '
+                self.endMarker = ' }'
                 self.inputBuffer = ''
                 self.pressed = 'true'
                 self.notPressed = 'false'
@@ -747,12 +747,7 @@ class LocalOnlinePlayer( OnlinePlayer ):
                 self.backwardPressBuffer = self.backwardPress + self.notPressed
                 self.punchPressBuffer = self.punchPress + self.notPressed
         def ConstructBuffer( self ):
-                self.inputBuffer = self.beginMarker + ( self.seperator +
-                                                        ( self.jumpPressBuffer + ( self.seperator +
-                                                                                   ( self.forwardPressBuffer +
-                                                                                     ( self.seperator + ( self.backwardPressBuffer +
-                                                                                                          ( self.seperator + ( self.punchPressBuffer +
-                                                                                                                               ( self.seperator + self.endMaker ) ) ) ) ) ) ) ) )
+                self.inputBuffer = self.beginMarker +( self.jumpPressBuffer + ( self.seperator + ( self.forwardPressBuffer + ( self.seperator + ( self.backwardPressBuffer + ( self.seperator + ( self.punchPressBuffer + ( self.endMarker ) ) ) ) ) ) ) )
                 return self.inputBuffer
         def Controle( self ):
                         if self._Stop == True:
@@ -760,10 +755,10 @@ class LocalOnlinePlayer( OnlinePlayer ):
                                         self.jumpPressBuffer = self.jumpPress + self.pressed
                                         self.PlayerJump()
                                 if A == True:
-                                        self.forwardPressBuffer = self.jumpPress + self.pressed
+                                        self.forwardPressBuffer = self.forwardPress + self.pressed
                                         self.PlayerWalkForward()
                                 if D == True:
-                                        self.backwardPressBuffer = self.jumpPress + self.pressed
+                                        self.backwardPressBuffer = self.backwardPress + self.pressed
                                         self.PlayerWalkBackward()
 
 class RemoteOnlinePlayer( OnlinePlayer ):
@@ -1828,14 +1823,14 @@ class OnePlayerLevel( Level ):
 
 class OnlineLevel( Level ):
         def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ ):
+                self.lock = threading.RLock()
                 Level.__init__( self, Package, Obj1, Obj2, AI )
                 self.hostIP = hostIP_
                 self.port = port_
                 self.activeJSON = ''
                 self.reciverThread = None
-                self.lock = threading.RLock()
         def Initilize( self ):
-                self.lock.aquire( True )
+                self.lock.acquire( True )
                 self._player.SetBotPosition( 100, 270 )
                 self._player.ArmCalc()
                 self._player.box.x_offset = 12#32
@@ -1846,7 +1841,7 @@ class OnlineLevel( Level ):
                 self._robot.box.y_offset = 30#20
                 self.lock.release()
         def RunLevel( self ):
-                self.lock.aquire( True )
+                self.lock.acquire( True )
                 self._player.InputBufferReset()
                 self._player = Refresh_Bot( self._player, self._robot, RShift )
                 self._robot = Refresh_Bot( self._robot, self._player, self._robot.goPunch )
@@ -1869,27 +1864,31 @@ class OnlineHostLevel( OnlineLevel ):
         def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, hostSocket_ ):
                 OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ )
                 self.hostSocket = hostSocket_
-                self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, ( self ) )
+                self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, () )
         def AwaitRemoteData( self ):
                 while True:
                         ( client, address ) = self.hostSocket.accept()
-                        self.lock.aquire( True )
-                        self.ParseIncomeingJSON( json.loads( client.recv( 256 ).decode() ) )
-                        client.send( self._player.ConstructBuffer() )
+                        self.lock.acquire( True )
+                        s = str( client.recv( 256 ).decode() )
+                        print( "Host Reciving: " + s )
+                        self.ParseIncomingJSON( json.loads( s ) )
+                        client.send( bytes( self._player.ConstructBuffer().encode( 'utf-8' ) ) )
                         self.lock.release()
 
 
 class OnlineClientLevel( OnlineLevel ):
         def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ ):
                 OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ )
-                self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, ( self ) )
+                self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, () )
         def AwaitRemoteData( self ):
                 while True:
                         client = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
                         client.connect( ( self.hostIP, self.port ) )
-                        self.lock.aquire( True )
-                        client.send( self._player.ConstructBuffer() )
-                        self.ParseIncomeingJSON( json.loads( client.recv( 256 ).decode() ) )
+                        self.lock.acquire( True )
+                        client.send( bytes( self._player.ConstructBuffer().encode( 'utf-8' ) ) )
+                        s = str( client.recv( 256 ).decode() )
+                        print( "Client Reciving: " + s )
+                        self.ParseIncomingJSON( json.loads( s ) )
                         self.lock.release()
 
 #################################
@@ -2073,7 +2072,8 @@ class ConnectionInfo:
 
 
 def WaitForConnection( connectionInfo ):
-        ( client, address ) = connectionInfo.hostSocket.accept()
+        pass
+#        ( client, address ) = connectionInfo.hostSocket.accept()
 
 #############MAIN PROECDURE#############
 
@@ -2182,13 +2182,13 @@ def main():
                                         if onlineRole == 0:
                                                 hostSocket = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
                                                 #TODO actually implement for real.
-                                                hostSocket.bind( ( input( 'Enter IP ---> ' ), 27020 ) )
+                                                hostSocket.bind( ( 'localhost', 27020 ) )
                                                 hostSocket.listen()
                                                 connectionInfo = ConnectionInfo( hostSocket )
                                                 _thread.start_new_thread( WaitForConnection, ( connectionInfo, ) )
                                         break
                         PygameUpdate( MENU_TIME )
-                while online == True and onlineRole == 0 and lobbyMenuOption == -1:
+                """while online == True and onlineRole == 0 and lobbyMenuOption == -1:
                         Window.blit( GuiBack.sprite, ( 0, 0 ) )
                         getEvents()
                         lobbyMenu.Select()
@@ -2200,7 +2200,7 @@ def main():
                                         i.activate = False
                                         print( "Lobby Menu Option: " + str( lobbyMenuOption ) )
                                         break
-                        PygameUpdate( MENU_TIME )
+                        PygameUpdate( MENU_TIME )"""
                 while online == True and onlineRole == 1 and connectType == -1:
                         Window.blit( GuiBack.sprite, ( 0, 0 ) )
                         getEvents()
@@ -2212,10 +2212,10 @@ def main():
                                         clock.tick( MENU_SELECT_DELAY )
                                         i.activate = False
                                         print( "Connection Type: " + str( lobbyMenuOption ) )
-                                        ip = input( "IP to connect to ---> " )
+                                        ip = 'localhost'
                                         break
                         PygameUpdate( MENU_TIME )
-                while whichLevel == -1:
+                while whichLevel == -1 and online == False:
                         #TODO modify impleentation for online play.
                         Window.blit( GuiBack.sprite, ( 0, 0 ) )
                         Window.blit( chooseStage.sprite, ( 200, 40 ) )
@@ -2287,11 +2287,11 @@ def main():
                         elif gameType == 2:
                                 #@TODO implement multiplayer play
                                 if onlineRole == 0:
-                                        level = OnlineHostLevel( levels[ 0 ], Bots[ 0 ].CrreateLocalOnlinePlayer, Bots[ 1 ].CreateRemoteOnlinePlayer(), False, ip, 27020, hostSocket )
+                                        level = OnlineHostLevel( levels[ 0 ], Bots[ 0 ].CreateLocalOnlinePlayer(), Bots[ 1 ].CreateRemoteOnlinePlayer(), False, ip, 27020, hostSocket )
                                         while level.Notify() == False:
                                                 level.Logic()
                                 if onlineRole == 1:
-                                        level = OnlineClientLevel( levels[ 0 ], Bots[ 1 ].CrreateLocalOnlinePlayer, Bots[ 0 ].CreateRemoteOnlinePlayer(), False, ip, 27020 )
+                                        level = OnlineClientLevel( levels[ 0 ], Bots[ 1 ].CreateLocalOnlinePlayer(), Bots[ 0 ].CreateRemoteOnlinePlayer(), False, ip, 27020 )
                                         while level.Notify() == False:
                                                 level.Logic()
                                 inGame = False
