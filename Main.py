@@ -1822,8 +1822,10 @@ class OnePlayerLevel( Level ):
 
 
 class OnlineLevel( Level ):
-        def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ ):
+        def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, localPosition_, remotePosition_ ):
                 self.lock = threading.RLock()
+                self.localPosition = localPosition_
+                self.remotePosition = remotePosition_
                 Level.__init__( self, Package, Obj1, Obj2, AI )
                 self.hostIP = hostIP_
                 self.port = port_
@@ -1831,11 +1833,11 @@ class OnlineLevel( Level ):
                 self.reciverThread = None
         def Initilize( self ):
                 self.lock.acquire( True )
-                self._player.SetBotPosition( 100, 270 )
+                self._player.SetBotPosition( self.localPosition, 270 )
                 self._player.ArmCalc()
                 self._player.box.x_offset = 12#32
                 self._player.box.y_offset = 30
-                self._robot.SetBotPosition( 200, 270 )
+                self._robot.SetBotPosition( self.remotePosition, 270 )
                 self._robot.ArmCalc()
                 self._robot.box.x_offset = 12
                 self._robot.box.y_offset = 30#20
@@ -1843,7 +1845,9 @@ class OnlineLevel( Level ):
         def RunLevel( self ):
                 self.lock.acquire( True )
                 self._player.InputBufferReset()
-                self._player = Refresh_Bot( self._player, self._robot, RShift )
+                self._player = Refresh_Bot( self._player, self._robot, Z )
+                if Z == True:
+                        self._player.punchPressBuffer = self._player.punchPress + self._player.pressed
                 self._robot = Refresh_Bot( self._robot, self._player, self._robot.goPunch )
                 self._robot.Update_Arms()
                 self._player.Update_Arms()
@@ -1862,7 +1866,7 @@ class OnlineLevel( Level ):
 
 class OnlineHostLevel( OnlineLevel ):
         def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, hostSocket_ ):
-                OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ )
+                OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, 100, 200 )
                 self.hostSocket = hostSocket_
                 self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, () )
         def AwaitRemoteData( self ):
@@ -1878,7 +1882,7 @@ class OnlineHostLevel( OnlineLevel ):
 
 class OnlineClientLevel( OnlineLevel ):
         def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ ):
-                OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ )
+                OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, 200, 100 )
                 self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, () )
         def AwaitRemoteData( self ):
                 while True:
@@ -2183,6 +2187,7 @@ def main():
                                                 hostSocket = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
                                                 #TODO actually implement for real.
                                                 hostSocket.bind( ( 'localhost', 27020 ) )
+                                                hostSocket.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
                                                 hostSocket.listen()
                                                 connectionInfo = ConnectionInfo( hostSocket )
                                                 _thread.start_new_thread( WaitForConnection, ( connectionInfo, ) )
