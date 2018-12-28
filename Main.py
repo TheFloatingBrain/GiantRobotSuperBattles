@@ -7,7 +7,7 @@ import random
 import os
 import json
 import threading
-
+import _thread
 
 
 #################################
@@ -1761,7 +1761,7 @@ class TwoPlayerLevel( Level ):
                 self._player.Update_Arms()
                 if self._robot.health <= 0 or self._player.health <= 0:
                         self._gameOver = True
-        def Draw( self ):        
+        def Draw( self ):
                         self._package.EndThread()
 
 
@@ -1796,7 +1796,7 @@ class OnePlayerLevel( Level ):
                 self._robot.Update_Arms()
                 if self._robot.health <= 0 or self._player.health <= 0:
                         self._gameOver = True
-        def Draw( self ):        
+        def Draw( self ):
                         self._package.EndThread()
 
 
@@ -1819,17 +1819,6 @@ class OnlineLevel( Level ):
                 self.activeJSON = ''
                 self.reciverThread = None
                 self.lock = threading.RLock()
-        def ParseIncomingJSON( self, remoteData ):
-                self.lock.aquire( True )
-                self._robot.goJump = remoteData[ self._robot.jumpPressPropertyName ]
-                self._robot.goForward = remoteData[ self._robot.forwardPressPropertyName ]
-                self._robot.goBackward = remoteData[ self._robot.backwardPressPropertyName ]
-                self._robot.goPunch = remoteData[ self._robot.punchPressPropertyName ]
-                self.lock.release()
-        def AwaitRemoteData( self ):
-                pass
-
-class OnlineHostLevel( OnlineLevel ):
         def Initilize( self ):
                 self.lock.aquire( True )
                 self._player.SetBotPosition( 100, 270 )
@@ -1843,6 +1832,7 @@ class OnlineHostLevel( OnlineLevel ):
                 self.lock.release()
         def RunLevel( self ):
                 self.lock.aquire( True )
+                self._player.InputBufferReset()
                 self._player = Refresh_Bot( self._player, self._robot, RShift )
                 self._robot = Refresh_Bot( self._robot, self._player, self._robot.goPunch )
                 self._robot.Update_Arms()
@@ -1850,11 +1840,42 @@ class OnlineHostLevel( OnlineLevel ):
                 if self._robot.health <= 0 or self._player.health <= 0:
                         self._gameOver = True
                 self.lock.release()
-        def Draw( self ):        
+        def ParseIncomingJSON( self, remoteData ):
+                self._robot.goJump = remoteData[ self._robot.jumpPressPropertyName ]
+                self._robot.goForward = remoteData[ self._robot.forwardPressPropertyName ]
+                self._robot.goBackward = remoteData[ self._robot.backwardPressPropertyName ]
+                self._robot.goPunch = remoteData[ self._robot.punchPressPropertyName ]
+        def AwaitRemoteData( self ):
+                pass
+        def Draw( self ):
                         self._package.EndThread()
 
+class OnlineHostLevel( OnlineLevel ):
+        def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, hostSocket_ ):
+                OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ )
+                self.hostSocket = hostSocket_
+                self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, ( self ) )
+        def AwaitRemoteData( self ):
+                while True:
+                        ( client, address ) = self.hostSocket.accept()
+                        self.lock.aquire( True )
+                        self.ParseIncomeingJSON( json.loads( client.recv( 256 ).decode() ) )
+                        client.send( self._player.ConstructBuffer() )
+                        self.lock.release()
 
 
+class OnlineClientLevel( OnlineLevel ):
+        def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ ):
+                OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ )
+                self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, ( self ) )
+        def AwaitRemoteData( self ):
+                while True:
+                        client = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+                        client.connect( ( self.hostIP, self.port ) )
+                        self.lock.aquire( True )
+                        client.send( self._player.ConstructBuffer() )
+                        self.ParseIncomeingJSON( json.loads( client.recv( 256 ).decode() ) )
+                        self.lock.release()
 
 #################################
 #                               #
