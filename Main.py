@@ -5,6 +5,8 @@ from Sprite_Object import Sprite_Object
 import math
 import random
 import os
+import json
+import threading
 
 
 
@@ -46,7 +48,6 @@ KOSound = pygame.mixer.Sound( "Sounds/KO.wav" )
 #                               #
 #                               #
 #################################
-
 
 
 """#A sprite class makes everything easier.
@@ -610,8 +611,23 @@ class Robot_Base:
 
 
 class PlayerBase( Robot_Base ):
+        def PlayerWalkForward( self ):
+                self._Vector.setBegin( self._Position.x, self._Position.y )
+                self._Vector.setDestination( self._Position.x + 1, self._Position.y )
+                self._Vector = Calc( self._Vector, self._Position )
+                self._Fwd = True
+                self._Bkwd = False
+        def PlayerWalkBackward( self ):
+                self._Vector.setBegin( self._Position.x, self._Position.y )
+                self._Vector.setDestination( self._Position.x - 1, self._Position.y )
+                self._Vector = Calc( self._Vector, self._Position )
+                self._Fwd = False
+                self._Bkwd = True
+        def PlayerJump( self ):
+                self._Jump = True
         def Controle( self ):
                 pass
+
 
 
 #################################
@@ -656,19 +672,11 @@ class Player1( PlayerBase ):
         def Controle( self ):
                         if self._Stop == True:
                                 if A == True:
-                                        self._Vector.setBegin( self._Position.x, self._Position.y )
-                                        self._Vector.setDestination( self._Position.x + 1, self._Position.y )
-                                        self._Vector = Calc( self._Vector, self._Position )
-                                        self._Fwd = True
-                                        self._Bkwd = False
+                                        self.PlayerWalkForward()
                                 if D == True:
-                                        self._Vector.setBegin( self._Position.x, self._Position.y )
-                                        self._Vector.setDestination( self._Position.x - 1, self._Position.y )
-                                        self._Vector = Calc( self._Vector, self._Position )
-                                        self._Fwd = False
-                                        self._Bkwd = True
+                                        self.PlayerWalkBackward()
                                 if W == True:
-                                        self._Jump = True
+                                        self.PlayerJump()
 
 
 #################################
@@ -688,19 +696,90 @@ class Player2( PlayerBase ):
         def Controle( self ):
                         if self._Stop == True:
                                 if Left == True:
-                                        self._Vector.setBegin( self._Position.x, self._Position.y )
-                                        self._Vector.setDestination( self._Position.x + 1, self._Position.y )
-                                        self._Vector = Calc( self._Vector, self._Position )
-                                        self._Fwd = True
-                                        self._Bkwd = False
+                                        self.PlayerWalkForward()
                                 if Right == True:
-                                        self._Vector.setBegin( self._Position.x, self._Position.y )
-                                        self._Vector.setDestination( self._Position.x - 1, self._Position.y )
-                                        self._Vector = Calc( self._Vector, self._Position )
-                                        self._Fwd = False
-                                        self._Bkwd = True
+                                        self.PlayerWalkBackward()
                                 if Up == True:
-                                        self._Jump = True
+                                        self.PlayerJump()
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+class OnlinePlayer( PlayerBase ):
+        def __init__( self, F, B, AF, AB, JF, JB ):
+                PlayerBase.__init__( self, F, B, AF, AB, JF, JB )
+                self.jumpPressPropertyName = 'jumpPress'
+                self.forwardPressPropertyName = 'forwardPress'
+                self.backwardPressPropertyName = 'backwardPress'
+                self.punchPressPropertyName = 'punchPress'
+
+class LocalOnlinePlayer( OnlinePlayer ):
+        def __init__( self, F, B, AF, AB, JF, JB ):
+                OnlinePlayer.__init__( self, F, B, AF, AB, JF, JB )
+                self.seperator = ', '
+                self.jumpPress = '"jumpPress" : '
+                self.forwardPress = '"forwardPress" : '
+                self.backwardPress = '"backwardPress : '
+                self.punchPress = '"punchPress" : '
+                self.jumpPressBuffer = ''
+                self.forwardPressBuffer = ''
+                self.backwardPressBuffer = ''
+                self.punchPressBuffer = ''
+                self.beginMarker = '{'
+                self.endMarker = '}'
+                self.inputBuffer = ''
+                self.pressed = 'true'
+                self.notPressed = 'false'
+        def InputBufferReset( self ):
+                self.intputBuffer = ''
+                self.jumpPressBuffer = self.jumpPress + self.notPressed
+                self.forwardPressBuffer = self.forwardPress + self.notPressed
+                self.backwardPressBuffer = self.backwardPress + self.notPressed
+                self.punchPressBuffer = self.punchPress + self.notPressed
+        def ConstructBuffer( self ):
+                self.inputBuffer = self.beginMarker + ( self.seperator +
+                                                        ( self.jumpPressBuffer + ( self.seperator +
+                                                                                   ( self.forwardPressBuffer +
+                                                                                     ( self.seperator + ( self.backwardPressBuffer +
+                                                                                                          ( self.seperator + ( self.punchPressBuffer +
+                                                                                                                               ( self.seperator + self.endMaker ) ) ) ) ) ) ) ) )
+                return self.inputBuffer
+        def Controle( self ):
+                        if self._Stop == True:
+                                if W == True:
+                                        self.jumpPressBuffer = self.jumpPress + self.pressed
+                                        self.PlayerJump()
+                                if A == True:
+                                        self.forwardPressBuffer = self.jumpPress + self.pressed
+                                        self.PlayerWalkForward()
+                                if D == True:
+                                        self.backwardPressBuffer = self.jumpPress + self.pressed
+                                        self.PlayerWalkBackward()
+
+class RemoteOnlinePlayer( OnlinePlayer ):
+        def __init__( self, F, B, AF, AB, JF, JB ):
+                OnlinePlayer.__init__( self, F, B, AF, AB, JF, JB )
+                self.goForward = False
+                self.goBackward = False
+                self.goJump = False
+                self.goPunch = False
+        def Controle( self ):
+                        if self._Stop == True:
+                                if self.goForward == True:
+                                        self.PlayerWalkForward()
+                                if self.goBackward == True:
+                                        self.PlayerWalkBackward()
+                                if self.goJump == True:
+                                        self.PlayerJump()
 
 #################################
 #                               #
@@ -1541,7 +1620,7 @@ class GamePackage:
 
 #Base class for a level, so its not so messy.
 class Level:
-        def __init__( self, Package, Obj1, Obj2, AI):
+        def __init__( self, Package, Obj1, Obj2, AI ):
                 self._playerHealth = Sprite_Object( "Battary.png" )
                 self._robotHealth = Sprite_Object( "Battary.png" )
                 self._pHBars = [ Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ),
@@ -1720,6 +1799,59 @@ class OnePlayerLevel( Level ):
         def Draw( self ):        
                         self._package.EndThread()
 
+
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+class OnlineLevel( Level ):
+        def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ ):
+                Level.__init__( self, Package, Obj1, Obj2, AI )
+                self.hostIP = hostIP_
+                self.port = port_
+                self.activeJSON = ''
+                self.reciverThread = None
+                self.lock = threading.RLock()
+        def ParseIncomingJSON( self, remoteData ):
+                self.lock.aquire( True )
+                self._robot.goJump = remoteData[ self._robot.jumpPressPropertyName ]
+                self._robot.goForward = remoteData[ self._robot.forwardPressPropertyName ]
+                self._robot.goBackward = remoteData[ self._robot.backwardPressPropertyName ]
+                self._robot.goPunch = remoteData[ self._robot.punchPressPropertyName ]
+                self.lock.release()
+        def AwaitRemoteData( self ):
+                pass
+
+class OnlineHostLevel( OnlineLevel ):
+        def Initilize( self ):
+                self.lock.aquire( True )
+                self._player.SetBotPosition( 100, 270 )
+                self._player.ArmCalc()
+                self._player.box.x_offset = 12#32
+                self._player.box.y_offset = 30
+                self._robot.SetBotPosition( 200, 270 )
+                self._robot.ArmCalc()
+                self._robot.box.x_offset = 12
+                self._robot.box.y_offset = 30#20
+                self.lock.release()
+        def RunLevel( self ):
+                self.lock.aquire( True )
+                self._player = Refresh_Bot( self._player, self._robot, RShift )
+                self._robot = Refresh_Bot( self._robot, self._player, self._robot.goPunch )
+                self._robot.Update_Arms()
+                self._player.Update_Arms()
+                if self._robot.health <= 0 or self._player.health <= 0:
+                        self._gameOver = True
+                self.lock.release()
+        def Draw( self ):        
+                        self._package.EndThread()
 
 
 
