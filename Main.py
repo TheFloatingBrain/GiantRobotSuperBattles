@@ -1911,7 +1911,7 @@ class OnlineHostLevel( OnlineLevel ):
                         self.clients.append( client )
         def ParseRemoteData( self ):
                 while True:
-                        if len( self.clients ) >= 0:
+                        if len( self.clients ) > 0:
                                 client = self.clients[ -1 ]
                                 self.lock.acquire( True )
                                 s = str( client.recv( 256 ).decode() )
@@ -2240,7 +2240,7 @@ def main():
                                         if onlineRole == 0:
                                                 hostSocket = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
                                                 #TODO actually implement for real.
-                                                hostSocket.bind( ( 'localhost', 27020 ) )
+                                                hostSocket.bind( ( '192.168.1.240', 27020 ) )
                                                 hostSocket.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
                                                 hostSocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                                                 hostSocket.listen()
@@ -2272,7 +2272,7 @@ def main():
                                         clock.tick( MENU_SELECT_DELAY )
                                         i.activate = False
                                         print( "Connection Type: " + str( connectType ) )
-                                        ip = 'localhost'
+                                        ip = '192.168.1.240'#'localhost'
                                         break
                         PygameUpdate( MENU_TIME )
                 while whichLevel == -1 and online == False:
