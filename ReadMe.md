@@ -1,20 +1,20 @@
 Welcome to the GRSB help/read me file:
 # Controles:
-    * Gui:
-        * Right Arrow: Select
-        * Down Arrow: Scroll Up
-        * Up Arrow: Scroll Down
-    * Game:
-        * Player1:
-            * W: Jump
-            * A: Go Left
-            * D: Go Right
-            * Z: Punch
-        * Player2:
-	    * Up Arrow: Jump
-	    * Left Arrow: Go Left
-	    * Right Arrow: Go Right
-	    * (Right) Shift: Punch
+* Gui:
+   * Right Arrow: Select
+   * Down Arrow: Scroll Up
+   * Up Arrow: Scroll Down
+* Game:
+    * Player1:
+        * W: Jump
+        * A: Go Left
+        * D: Go Right
+        * Z: Punch
+    * Player2:
+        * Up Arrow: Jump
+	* Left Arrow: Go Left
+	* Right Arrow: Go Right
+	* (Right) Shift: Punch
 
 # History of the game:
 		In a class at school we were learning Python 3 computer language.
