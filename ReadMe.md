@@ -15,6 +15,7 @@ Welcome to the GRSB help/read me file:
 	* Left Arrow: Go Left
 	* Right Arrow: Go Right
 	* (Right) Shift: Punch
+    * Online (Mimic Player One)
 
 # History of the game:
 		In a class at school we were learning Python 3 computer language.
