@@ -12,10 +12,9 @@ Welcome to the GRSB help/read me file:
         * Z: Punch
     * Player2:
         * Up Arrow: Jump
-	* Left Arrow: Go Left
-	* Right Arrow: Go Right
-	* (Right) Shift: Punch
-    * Online (Mimic Player One)
+        * Left Arrow: Go Left
+        * Right Arrow: Go Right
+        * (Right) Shift: Punch
 
 # History of the game:
 		In a class at school we were learning Python 3 computer language.
