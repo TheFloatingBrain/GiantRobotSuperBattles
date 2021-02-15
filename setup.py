@@ -81,5 +81,6 @@ cx_Freeze.setup(
                                                 "Sounds/Jump/Jump.wav",
                                                 "Sounds/Jump/Land.wav",
                                                 "Sounds/Robo/Walk.wav",
-                                                "Sounds/Wind/Gush.wav"                                                
+                                                "Sounds/Wind/Gush.wav", 
+                                                "Sprite_Object.py"
                                                 ] } }, executables = executables_ )

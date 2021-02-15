@@ -5,7 +5,10 @@ from Sprite_Object import Sprite_Object
 import math
 import random
 import os
-
+import json
+import threading
+import _thread
+import socket
 
 
 #################################
@@ -25,7 +28,7 @@ Window=pygame.display.set_mode((600,400),0,32)
 clock = pygame.time.Clock()
 MENU_TIME = 10
 MENU_SELECT_DELAY = 10
-GAME_FRAME_RATE = 240
+GAME_FRAME_RATE = 3#240
 
 hitSounds = [ pygame.mixer.Sound( "Sounds/Hit/MetalHit0.wav" ), pygame.mixer.Sound( "Sounds/Hit/MetalHit1.wav" ),
               pygame.mixer.Sound( "Sounds/Hit/MetalHit2.wav" ), pygame.mixer.Sound( "Sounds/Hit/MetalHit3.wav" ) ]
@@ -46,7 +49,6 @@ KOSound = pygame.mixer.Sound( "Sounds/KO.wav" )
 #                               #
 #                               #
 #################################
-
 
 
 """#A sprite class makes everything easier.
@@ -610,8 +612,23 @@ class Robot_Base:
 
 
 class PlayerBase( Robot_Base ):
+        def PlayerWalkForward( self ):
+                self._Vector.setBegin( self._Position.x, self._Position.y )
+                self._Vector.setDestination( self._Position.x + 1, self._Position.y )
+                self._Vector = Calc( self._Vector, self._Position )
+                self._Fwd = True
+                self._Bkwd = False
+        def PlayerWalkBackward( self ):
+                self._Vector.setBegin( self._Position.x, self._Position.y )
+                self._Vector.setDestination( self._Position.x - 1, self._Position.y )
+                self._Vector = Calc( self._Vector, self._Position )
+                self._Fwd = False
+                self._Bkwd = True
+        def PlayerJump( self ):
+                self._Jump = True
         def Controle( self ):
                 pass
+
 
 
 #################################
@@ -656,19 +673,11 @@ class Player1( PlayerBase ):
         def Controle( self ):
                         if self._Stop == True:
                                 if A == True:
-                                        self._Vector.setBegin( self._Position.x, self._Position.y )
-                                        self._Vector.setDestination( self._Position.x + 1, self._Position.y )
-                                        self._Vector = Calc( self._Vector, self._Position )
-                                        self._Fwd = True
-                                        self._Bkwd = False
+                                        self.PlayerWalkForward()
                                 if D == True:
-                                        self._Vector.setBegin( self._Position.x, self._Position.y )
-                                        self._Vector.setDestination( self._Position.x - 1, self._Position.y )
-                                        self._Vector = Calc( self._Vector, self._Position )
-                                        self._Fwd = False
-                                        self._Bkwd = True
+                                        self.PlayerWalkBackward()
                                 if W == True:
-                                        self._Jump = True
+                                        self.PlayerJump()
 
 
 #################################
@@ -688,19 +697,98 @@ class Player2( PlayerBase ):
         def Controle( self ):
                         if self._Stop == True:
                                 if Left == True:
-                                        self._Vector.setBegin( self._Position.x, self._Position.y )
-                                        self._Vector.setDestination( self._Position.x + 1, self._Position.y )
-                                        self._Vector = Calc( self._Vector, self._Position )
-                                        self._Fwd = True
-                                        self._Bkwd = False
+                                        self.PlayerWalkForward()
                                 if Right == True:
-                                        self._Vector.setBegin( self._Position.x, self._Position.y )
-                                        self._Vector.setDestination( self._Position.x - 1, self._Position.y )
-                                        self._Vector = Calc( self._Vector, self._Position )
-                                        self._Fwd = False
-                                        self._Bkwd = True
+                                        self.PlayerWalkBackward()
                                 if Up == True:
-                                        self._Jump = True
+                                        self.PlayerJump()
+
+
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+
+
+class OnlinePlayer( PlayerBase ):
+        def __init__( self, F, B, AF, AB, JF, JB ):
+                PlayerBase.__init__( self, F, B, AF, AB, JF, JB )
+                self.jumpPressPropertyName = 'jumpPress'
+                self.forwardPressPropertyName = 'forwardPress'
+                self.backwardPressPropertyName = 'backwardPress'
+                self.punchPressPropertyName = 'punchPress'
+
+class LocalOnlinePlayer( OnlinePlayer ):
+        def __init__( self, F, B, AF, AB, JF, JB ):
+                OnlinePlayer.__init__( self, F, B, AF, AB, JF, JB )
+                self.seperator = ', '
+                self.pressed = 'true'
+                self.notPressed = 'false'
+                self.jumpPress = '"jumpPress" : '
+                self.forwardPress = '"forwardPress" : '
+                self.backwardPress = '"backwardPress" : '
+                self.punchPress = '"punchPress" : '
+                self.jumpPressBuffer = self.jumpPress + self.notPressed
+                self.forwardPressBuffer = self.forwardPress + self.notPressed
+                self.backwardPressBuffer = self.backwardPress + self.notPressed
+                self.punchPressBuffer = self.punchPress + self.notPressed
+                self.beginMarker = '{ '
+                self.endMarker = ' }'
+                self.inputBuffer = ''
+                self.ConstructBuffer()
+        def InputBufferReset( self ):
+                self.intputBuffer = ''
+                self.jumpPressBuffer = self.jumpPress + self.notPressed
+                self.forwardPressBuffer = self.forwardPress + self.notPressed
+                self.backwardPressBuffer = self.backwardPress + self.notPressed
+                self.punchPressBuffer = self.punchPress + self.notPressed
+        def ConstructBuffer( self ):
+                self.inputBuffer = self.beginMarker +( self.jumpPressBuffer + ( self.seperator + ( self.forwardPressBuffer + ( self.seperator + ( self.backwardPressBuffer + ( self.seperator + ( self.punchPressBuffer + ( self.endMarker ) ) ) ) ) ) ) )
+                return self.inputBuffer
+        def Controle( self ):
+                        if self._Stop == True:
+                                if W == True:
+                                        self.jumpPressBuffer = self.jumpPress + self.pressed
+                                        self.PlayerJump()
+                                else:
+                                        self.jumpPressBuffer = self.jumpPress + self.notPressed
+                                if A == True:
+                                        self.forwardPressBuffer = self.forwardPress + self.pressed
+                                        self.PlayerWalkForward()
+                                else:
+                                        self.forwardPressBuffer = self.forwardPress + self.notPressed
+                                if D == True:
+                                        self.backwardPressBuffer = self.backwardPress + self.pressed
+                                        self.PlayerWalkBackward()
+                                else:
+                                        self.backwardPressBuffer = self.backwardPress + self.notPressed
+
+class RemoteOnlinePlayer( OnlinePlayer ):
+        def __init__( self, F, B, AF, AB, JF, JB ):
+                OnlinePlayer.__init__( self, F, B, AF, AB, JF, JB )
+                self.goForward = False
+                self.goBackward = False
+                self.goJump = False
+                self.goPunch = False
+        def ResetGo( self ):
+                self.goForward = False
+                self.goBackward = False
+                self.goJump = False
+                self.goPunch = False
+        def Controle( self ):
+                        if self._Stop == True:
+                                if self.goForward == True:
+                                        self.PlayerWalkForward()
+                                if self.goBackward == True:
+                                        self.PlayerWalkBackward()
+                                if self.goJump == True:
+                                        self.PlayerJump()
+                                #print( "goForward" + str( self.goForward ) + ", goBackward " + str( self.goBackward ) + ", goJump " + str( self.goJump ) + ", goPunch " + str( self.goPunch ) )
 
 #################################
 #                               #
@@ -1354,6 +1442,20 @@ class Robot_Factory:
                 AI.box.x_offset = 8
                 AI.box.y_offset = 20
                 return AI
+        def CreateLocalOnlinePlayer( self ):
+                localPlayer = LocalOnlinePlayer( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                localPlayer.SetBotPosition( 100, 270 )
+                localPlayer.ArmCalc()
+                localPlayer.box.x_offset = 32
+                localPlayer.box.y_offset = 30
+                return localPlayer
+        def CreateRemoteOnlinePlayer( self ):
+                remotePlayer = RemoteOnlinePlayer( self._sds[0], self._sds[1], self._sds[2], self._sds[3], self._sds[4], self._sds[5] )
+                remotePlayer.SetBotPosition( 100, 270 )
+                remotePlayer.ArmCalc()
+                remotePlayer.box.x_offset = 32
+                remotePlayer.box.y_offset = 30
+                return remotePlayer
         spriteDirectories = property( GetSpriteDirectories, "All the sprite directories." )
 
 
@@ -1541,7 +1643,7 @@ class GamePackage:
 
 #Base class for a level, so its not so messy.
 class Level:
-        def __init__( self, Package, Obj1, Obj2, AI):
+        def __init__( self, Package, Obj1, Obj2, AI ):
                 self._playerHealth = Sprite_Object( "Battary.png" )
                 self._robotHealth = Sprite_Object( "Battary.png" )
                 self._pHBars = [ Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ), Sprite_Object( "Bar.png" ),
@@ -1682,7 +1784,7 @@ class TwoPlayerLevel( Level ):
                 self._player.Update_Arms()
                 if self._robot.health <= 0 or self._player.health <= 0:
                         self._gameOver = True
-        def Draw( self ):        
+        def Draw( self ):
                         self._package.EndThread()
 
 
@@ -1717,12 +1819,138 @@ class OnePlayerLevel( Level ):
                 self._robot.Update_Arms()
                 if self._robot.health <= 0 or self._player.health <= 0:
                         self._gameOver = True
-        def Draw( self ):        
+        def Draw( self ):
                         self._package.EndThread()
 
 
 
 
+#################################
+#                               #
+#                               #
+#                               #
+#                               #
+#                               #
+#################################
+
+
+def PygameUpdate( time ):
+        global clock
+        clock.tick( time )
+        pygame.display.update()
+
+class OnlineLevel( Level ):
+        def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, localPosition_, remotePosition_ ):
+                self.lock = threading.RLock()
+                self.localPosition = localPosition_
+                self.remotePosition = remotePosition_
+                Level.__init__( self, Package, Obj1, Obj2, AI )
+                self.hostIP = hostIP_
+                self.port = port_
+                self.activeJSON = ''
+                self.reciverThread = None
+                self.backFrames = 0
+                self.bfr = None
+        def Initilize( self ):
+                self.lock.acquire( True )
+                self._player.SetBotPosition( self.localPosition, 270 )
+                self._player.ArmCalc()
+                self._player.box.x_offset = 12#32
+                self._player.box.y_offset = 30
+                self._robot.SetBotPosition( self.remotePosition, 270 )
+                self._robot.ArmCalc()
+                self._robot.box.x_offset = 12
+                self._robot.box.y_offset = 30#20
+                self.lock.release()
+        def RunLevel( self ):
+                self.lock.acquire( True )
+                #self._player.InputBufferReset()
+                self._robot = Refresh_Bot( self._robot, self._player, self._robot.goPunch )
+                self._player = Refresh_Bot( self._player, self._robot, Z )
+                if Z == True:
+                        self._player.punchPressBuffer = self._player.punchPress + self._player.pressed
+                else:
+                        self._player.punchPressBuffer = self._player.punchPress + self._player.notPressed
+                self._robot.Update_Arms()
+                self._player.Update_Arms()
+                if self._robot.health <= 0 or self._player.health <= 0:
+                        self._gameOver = True
+                self.bfr()
+                print( "backFrames: " + str( self.backFrames ) )
+                self.lock.release()
+        def ParseIncomingJSON( self, remoteData ):
+                self._robot.goJump = remoteData[ self._robot.jumpPressPropertyName ]
+                self._robot.goForward = remoteData[ self._robot.forwardPressPropertyName ]
+                self._robot.goBackward = remoteData[ self._robot.backwardPressPropertyName ]
+                #print( "Go BACK!" )
+                #print( self._robot.goBackward )
+                self._robot.goPunch = remoteData[ self._robot.punchPressPropertyName ]
+        def AwaitRemoteData( self ):
+                pass
+        def Draw( self ):
+                        self._package.EndThread()
+
+class OnlineHostLevel( OnlineLevel ):
+        def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, hostSocket_ ):
+                OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, 100, 200 )
+                self.hostSocket = hostSocket_
+                self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, () )
+                self.bfr = self.bbfr
+                self.clients = []
+                self.parseThread = _thread.start_new_thread( self.ParseRemoteData, () )
+        def bbfr( self ):
+                if self._robot.goBackward == True:
+                        self.backFrames += 1
+                else: self.backFrames = 0
+        def __del__( self ):
+                self.hostSocket.close()
+        def AwaitRemoteData( self ):
+                global GAME_FRAME_RATE
+                while True:
+                        ( client, address ) = self.hostSocket.accept()
+                        self.clients.append( client )
+        def ParseRemoteData( self ):
+                while True:
+                        if len( self.clients ) > 0:
+                                client = self.clients[ -1 ]
+                                self.lock.acquire( True )
+                                s = str( client.recv( 256 ).decode() )
+                                #print( "Host Reciving: " + s )
+                                self.ParseIncomingJSON( json.loads( s ) )
+                                client.send( bytes( self._player.ConstructBuffer().encode( 'utf-8' ) ) )
+                                client.close()
+                                #PygameUpdate( GAME_FRAME_RATE )
+                                self.lock.release()
+
+
+class OnlineClientLevel( OnlineLevel ):
+        def __init__( self, Package, Obj1, Obj2, AI, hostIP_, port_ ):
+                OnlineLevel.__init__( self, Package, Obj1, Obj2, AI, hostIP_, port_, 200, 100 )
+                self.reciverThread = _thread.start_new_thread( self.AwaitRemoteData, () )
+                self.bfr = self.bbbfr
+        def __del__( self ):
+                self.client.close()
+        def bbbfr( self ):
+                global D
+                if D == True:
+                        self.backFrames += 1
+                else:
+                        self.backFrames = 0
+        def AwaitRemoteData( self ):
+                global GAME_FRAME_RATE
+                while True:
+                        self.client = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+                        self.client.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
+                        self.client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                        self.client.connect( ( self.hostIP, self.port ) )
+                        self.lock.acquire( True )
+                        self.client.send( bytes( self._player.ConstructBuffer().encode( 'utf-8' ) ) )
+                        s = str( self.client.recv( 256 ).decode() )
+                        client.close()
+                        #print( "Client Reciving: " + s )
+                        self.ParseIncomingJSON( json.loads( s ) )
+                        #PygameUpdate( GAME_FRAME_RATE )
+                        self.lock.release()
 
 #################################
 #                               #
@@ -1886,12 +2114,24 @@ class Menu:
 
 
 
-def PygameUpdate( time ):
-        global clock
-        clock.tick( time )
-        pygame.display.update()
 
 
+
+class ConnectionInfo:
+        def __init__( self, hostSocket_ ):
+                self.hostSocket = hostSocket_
+                self.client = None
+                self.address = None
+        def HasRecivedConnection():
+                if client != None:
+                        self.lock.release()
+                        return True
+                return False
+
+
+def WaitForConnection( connectionInfo ):
+        pass
+#        ( client, address ) = connectionInfo.hostSocket.accept()
 
 #############MAIN PROECDURE#############
 
@@ -1915,10 +2155,19 @@ def main():
         menu = Menu( 4, choices, 300.0, 60.0, "Cursor.png", 64.0, alts, pygame.mixer.Sound( "Sounds/Menu/Option2.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
         gt = [ "1Player.png", "2Player.png", "Online.png" ]
         gtalts = [ "1Palt.png", "2Palt.png", "OnlineAlt.png" ]
+        hc = [ "Host.png", "Client.png" ]
+        hcalts = [ "HostAlt.png", "ClientAlt.png" ]
+        connectTypeIcons = [ "DirectConnect.png" ]
+        connectTypeAltIcons = [ "DirectConnectAlt.png" ]
+        lobbyIcons = [ "Start.png" ] #, "Kick.png", "GoToMainMenu.png" ]
+        lobbyAltIcons = [ "StartAlt.png" ] #, "KickAlt.png", "GoToMainMenuAlt.png" ]
+        youHaveBeenDisconnectedIcons = [ "Accept.png" ]
+        youHaveBeenDisconnectedAltIcons = [ "AcceptAlt.png" ]
         #230.0
         startMenu = Menu( 3, gt, 240, 166.0, "Cursor.png", 64.0, gtalts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
         startMenu.buttons[0].action = GameType( 0 )
         startMenu.buttons[1].action = GameType( 1 )
+        startMenu.buttons[2].action = GameType( 2 )
         menu.buttons[0].action = BotChoice( 0 )
         menu.buttons[1].action = BotChoice( 1 )
         menu.buttons[2].action = BotChoice( 3 )
@@ -1927,6 +2176,15 @@ def main():
         levelMenu.buttons[0].action = BotChoice( 0 )
         levelMenu.buttons[1].action = BotChoice( 1 )
         levelMenu.buttons[2].action = BotChoice( 2 )
+        onlineRoleMenu = Menu( 2, hc, 240.0, 166.0, "Cursor.png", 64.0, hcalts, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        onlineRoleMenu.buttons[0].action = BotChoice( 0 )
+        onlineRoleMenu.buttons[1].action = BotChoice( 1 )
+        connectionTypeMenu = Menu( 1, connectTypeIcons, 240.0, 166.0, "Cursor.png", 64.0, connectTypeAltIcons, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        connectionTypeMenu.buttons[0].action = BotChoice( 0 )
+        lobbyMenu = Menu( 1, lobbyIcons, 240.0, 166.0, "Cursor.png", 64.0, lobbyAltIcons, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        lobbyMenu.buttons[0].action = BotChoice( 0 )
+        disconnectedMenu = Menu( 1, youHaveBeenDisconnectedIcons, 240.0, 166.0, "Cursor.png", 64.0, youHaveBeenDisconnectedAltIcons, pygame.mixer.Sound( "Sounds/Menu/Option.wav" ), pygame.mixer.Sound( "Sounds/Menu/Select.wav" ) )
+        disconnectedMenu.buttons[0].action = BotChoice( 0 )
         GuiBack = Sprite_Object( "GuiScreen.png" )
         chooseBot = Sprite_Object( "Choose Your Robot.png" )
         chooseStage = Sprite_Object( "Choose Stage.png" )
@@ -1935,10 +2193,18 @@ def main():
         pickScreen1 = False
         pickScreen2 = False
         inGame = False
+        online = False
+        onlineRole = -1
+        connectType = -1
+        lobbyMenuOption = -1
+        disconnectedMenuOption = -1
         p1 = -1
         p2 = -1
         gameType = -1
         whichLevel = -1
+        ip = 'placeholder'
+        hostSocket = None
+        connectionInfo = None
         pygame.display.set_caption( "Giant Robot Super Battles" )
         while True:
                 while startScreen == True:
@@ -1950,6 +2216,8 @@ def main():
                         for i in startMenu.buttons:
                                 if i.Run() != -1:
                                         gameType = i.Run()
+                                        if gameType == 2:
+                                                online = True
                                         i.activate = False
                                         startScreen = False
                                         clock.tick( MENU_SELECT_DELAY )
@@ -1958,7 +2226,57 @@ def main():
                                 os.system( "ReadMe.txt" )
                                 os.system( "EXIT" )
                         PygameUpdate( MENU_TIME )
-                while whichLevel == -1:
+                while online == True and onlineRole == -1:
+                        Window.blit( GuiBack.sprite, ( 0, 0 ) )
+                        getEvents()
+                        onlineRoleMenu.Select()
+                        onlineRoleMenu.Draw()
+                        for i in onlineRoleMenu.buttons:
+                                if i.Run() != -1:
+                                        onlineRole = i.Run()
+                                        clock.tick( MENU_SELECT_DELAY )
+                                        i.activate = False
+                                        print( "Online Role: " + str( onlineRole ) )
+                                        if onlineRole == 0:
+                                                hostSocket = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+                                                #TODO actually implement for real.
+                                                hostSocket.bind( ( '192.168.1.240', 27020 ) )
+                                                hostSocket.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
+                                                hostSocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                                                hostSocket.listen()
+                                                connectionInfo = ConnectionInfo( hostSocket )
+                                                _thread.start_new_thread( WaitForConnection, ( connectionInfo, ) )
+                                        break
+                        PygameUpdate( MENU_TIME )
+                """while online == True and onlineRole == 0 and lobbyMenuOption == -1:
+                        Window.blit( GuiBack.sprite, ( 0, 0 ) )
+                        getEvents()
+                        lobbyMenu.Select()
+                        lobbyMenu.Draw()
+                        for i in lobbyMenu.buttons:
+                                if i.Run() != -1 and connectionInfo.client != None:
+                                        lobbyMenuOption = i.Run()
+                                        clock.tick( MENU_SELECT_DELAY )
+                                        i.activate = False
+                                        print( "Lobby Menu Option: " + str( lobbyMenuOption ) )
+                                        break
+                        PygameUpdate( MENU_TIME )"""
+                while online == True and onlineRole == 1 and connectType == -1:
+                        Window.blit( GuiBack.sprite, ( 0, 0 ) )
+                        getEvents()
+                        connectionTypeMenu.Select()
+                        connectionTypeMenu.Draw()
+                        for i in connectionTypeMenu.buttons:
+                                if i.Run() != -1:
+                                        connectType = i.Run()
+                                        clock.tick( MENU_SELECT_DELAY )
+                                        i.activate = False
+                                        print( "Connection Type: " + str( connectType ) )
+                                        ip = '192.168.1.240'#'localhost'
+                                        break
+                        PygameUpdate( MENU_TIME )
+                while whichLevel == -1 and online == False:
+                        #TODO modify impleentation for online play.
                         Window.blit( GuiBack.sprite, ( 0, 0 ) )
                         Window.blit( chooseStage.sprite, ( 200, 40 ) )
                         getEvents()
@@ -1995,6 +2313,11 @@ def main():
                                                         inGame= True
                                                         clock.tick( MENU_SELECT_DELAY )
                                                         break
+                        elif gameType == 2:
+                                #@TODO implement multiplayer player select
+                                p1 = 0
+                                p2 = 0
+                                inGame = True
                         else:
                                 while p1 == -1:
                                         Window.blit( GuiBack.sprite, ( 0,0 ) )
@@ -2021,6 +2344,29 @@ def main():
                                 startScreen = True
                                 gameType = -1
                                 whichLevel = -1
+                        elif gameType == 2:
+                                #@TODO implement multiplayer play
+                                if onlineRole == 0:
+                                        level = OnlineHostLevel( levels[ 0 ], Bots[ 0 ].CreateLocalOnlinePlayer(), Bots[ 1 ].CreateRemoteOnlinePlayer(), False, ip, 27020, hostSocket )
+                                        while level.Notify() == False:
+                                                level.Logic()
+                                if onlineRole == 1:
+                                        level = OnlineClientLevel( levels[ 0 ], Bots[ 1 ].CreateLocalOnlinePlayer(), Bots[ 0 ].CreateRemoteOnlinePlayer(), False, ip, 26020 )
+                                        while level.Notify() == False:
+                                                level.Logic()
+                                inGame = False
+                                online = False
+                                onlineRole = -1
+                                connectType = -1
+                                lobbyMenuOption = -1
+                                disconnectedMenuOption = -1
+                                p1 = -1
+                                p2 = -1
+                                gameType = -1
+                                whichLevel = -1
+                                ip = 'placeholder'
+                                hostSocket = None
+                                connectionInfo = None
                         else:
                                 level = TwoPlayerLevel( levels[whichLevel], Bots[p1].CreatePlayer1(), Bots[p2].CreatePlayer2(), False )
                                 while level.Notify() == False:
